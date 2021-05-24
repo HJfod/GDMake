@@ -4,7 +4,9 @@
 
 ---
 
-> GDMake is a tool meant for simplifying and speeding up the development of Geometry Dash mods.
+GDMake is a tool meant for simplifying and speeding up the development of Geometry Dash mods.
+
+---
 
 # Installation
 
