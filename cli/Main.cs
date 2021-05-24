@@ -396,6 +396,21 @@ Commands (Use help <command> for extra information):"
                             else
                                 ShowHelpForCommand(args[0]);
                         })},
+
+                        { "dump-include-path", new ArgHandler (null, args => {
+                            Console.WriteLine(
+                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx\n" +
+                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx/include\n" +
+                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx/kazmath/include\n" +
+                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx/platform/third_party/win32/OGLES\n" +
+                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx/platform/win32\n" +
+                                $"{GDMake.ExePath}/submodules/Cocos2d/extensions\n" +
+                                $"{GDMake.ExePath}/submodules/gd.h/include\n" +
+                                $"{GDMake.ExePath}/submodules/gd.h\n" +
+                                $"{GDMake.ExePath}/submodules/MinHook/include\n" +
+                                $"{GDMake.ExePath}/include"
+                            );
+                        })},
                     },
                     args => {
                         if (args.Count == 0)

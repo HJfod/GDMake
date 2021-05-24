@@ -64,6 +64,9 @@ namespace gdmake {
             if (!Directory.Exists(Path.Join(ExePath, "tools")))
                 return false;
 
+            if (!File.Exists(Path.Join(ExePath, "GDMakeSettings.json")))
+                return false;
+            
             GDMake.LoadSettings();
 
             return true;
@@ -271,7 +274,8 @@ namespace gdmake {
                     File.ReadAllText(Path.Join(ExePath, "GDMakeSettings.json"))
                 );
 
-                Submodules = SettingsFile.Submodules;
+                if (SettingsFile != null)
+                    Submodules = SettingsFile.Submodules;
             }
 
             CheckSubmodules();
@@ -367,6 +371,9 @@ namespace gdmake {
         }
 
         public static Result InitializeGlobal(bool re = false) {
+            if (!IsGlobalInitialized())
+                re = true;
+
             foreach (var dir in new string[] {
                 "builds",
                 "submodules",
@@ -386,19 +393,19 @@ namespace gdmake {
             }
 
             if (re) {
-                var settings = new SettingsFile();
+                SettingsFile = new SettingsFile();
                 var res = GetGDPath(true);
 
                 if (res.Failure)
                     return res;
 
-                settings.GDPath = res.Data.Replace("\\\\", "\\").Replace("\\", "/");
+                SettingsFile.GDPath = res.Data.Replace("\\\\", "\\").Replace("\\", "/");
 
                 SaveSettings();
-
-                SettingsFile = settings;
             } else
-                LoadSettings();
+                try {
+                    LoadSettings();
+                } catch (Exception) {}
 
             foreach (var sub in DefaultSubmodules)
                 try {
