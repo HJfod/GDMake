@@ -70,59 +70,73 @@ namespace gdmake {
             public string ReturnType { get; internal set; }
             public string CallingConvention { get; internal set; }
             public string Args { get; internal set; }
+            public string RawSignature { get; internal set; }
             public List<string> Includes { get; internal set; } = new List<string>();
 
             public string GetTrampolineName() {
                 return $"{this.ReturnType} ({this.CallingConvention}* {this.FuncName}{TrampolineExt})({this.Args})";
             }
 
+            public string GetFunctionSignature() {
+                return this.RawSignature;
+            }
+
             public Hook(string rawData) {
                 var data = rawData.Substring(1);
 
-                var addr = data.Substring(0, data.IndexOf(')')).Substring(2);
-                int addri;
+                var addr = data.Substring(0, data.IndexOf(')'));
+                int addri = 0;
 
-                if (!Int32.TryParse(addr, NumberStyles.HexNumber, null, out addri))
+                if (!Int32.TryParse(addr.Substring(2), NumberStyles.HexNumber, null, out addri))
+                    addri = Addresses.Names.GetValueOrDefault(addr.Replace(" ", "").Replace("::", "."), 0);
+                
+                if (addri == 0)
                     Console.WriteLine($"Unable to create hook: {addr} is not a valid address");
                 else {
-                    this.Address = addri;
+                    try {
+                        this.Address = addri;
 
-                    data = data.Substring(data.IndexOf(')') + 1);
+                        data = data.Substring(data.IndexOf(')') + 1);
 
-                    this.HookData = data;
+                        this.HookData = data;
 
-                    var funcDef = data.Substring(0, data.IndexOf('{'));
+                        var funcDef = data.Substring(0, data.IndexOf('{'));
 
-                    funcDef = funcDef.Replace("\r\n", "").Trim();
-                    funcDef = Utils.NormalizeWhiteSpaceForLoop(funcDef);
+                        funcDef = funcDef.Replace("\r\n", "").Trim();
+                        funcDef = Utils.NormalizeWhiteSpaceForLoop(funcDef);
 
-                    var funcType = funcDef.Substring(0, funcDef.IndexOf("(")).Trim();
-                    var funcParams = funcDef.Substring(
-                        funcDef.IndexOf('(') + 1,
-                        funcDef.IndexOf(')') - funcDef.IndexOf('(') - 1
-                    ).Trim();
+                        this.RawSignature = funcDef;
 
-                    var types = funcType.Split(' ');
-                    var cconvs = new string[] {
-                        "fastcall",
-                        "thiscall",
-                        "stdcall",
-                        "cdecl",
-                        "vectorcall",
-                        "clrcall"
-                    };
+                        var funcType = funcDef.Substring(0, funcDef.IndexOf("(")).Trim();
+                        var funcParams = funcDef.Substring(
+                            funcDef.IndexOf('(') + 1,
+                            funcDef.IndexOf(')') - funcDef.IndexOf('(') - 1
+                        ).Trim();
 
-                    for (var i = 0; i < types.Length - 1; i++)
-                        if (cconvs.Any(s => types[i].Contains(s)))
-                            this.CallingConvention = types[i];
-                        else
-                            this.ReturnType += types[i] + ' ';
-                    
-                    this.FuncName = types[types.Length - 1];
-                    this.Args = funcParams;
+                        var types = funcType.Split(' ');
+                        var cconvs = new string[] {
+                            "fastcall",
+                            "thiscall",
+                            "stdcall",
+                            "cdecl",
+                            "vectorcall",
+                            "clrcall"
+                        };
 
-                    this.HookData = this.HookData.Replace("GDMAKE_ORIG", $"{this.FuncName}{TrampolineExt}");
-                    this.HookData = this.HookData.Replace("GDMAKE_ORIG_S", $"{this.FuncName}{TrampolineExt}");
+                        for (var i = 0; i < types.Length - 1; i++)
+                            if (cconvs.Any(s => types[i].Contains(s)))
+                                this.CallingConvention = types[i];
+                            else
+                                this.ReturnType += types[i] + ' ';
+                        
+                        this.FuncName = types[types.Length - 1];
+                        this.Args = funcParams;
+
+                        this.HookData = this.HookData.Replace("GDMAKE_ORIG", $"{this.FuncName}{TrampolineExt}");
+                        this.HookData = this.HookData.Replace("GDMAKE_ORIG_S", $"{this.FuncName}{TrampolineExt}");
+                    } catch (Exception e) {
+                        Console.WriteLine($"Unable to create hook: {e}");
+                    }
                 }
             }
         }
@@ -170,21 +184,23 @@ namespace gdmake {
 
         public void GetMacrosAndReplace(string file) {
             var oText = File.ReadAllText(file);
-            var includes = new List<string>();
+            // var includes = new List<string>();
+            var extraIncludes = "";
 
+            try {
             var iText = oText;
 
-            while (iText.Contains("#include")) {
-                var ix = iText.IndexOf("#include");
+            // while (iText.Contains("#include")) {
+            //     var ix = iText.IndexOf("#include");
 
-                iText = iText.Substring(ix + "#include".Length).TrimStart();
+            //     iText = iText.Substring(ix + "#include".Length).TrimStart();
 
-                var next = iText.IndexOf('>') + 1;
-                if (iText[0] == '"')
-                    next = iText.IndexOf('"', 1) + 1;
+            //     var next = iText.IndexOf('>') + 1;
+            //     if (iText[0] == '"')
+            //         next = iText.IndexOf('"', 1) + 1;
                 
-                includes.Add(iText.Substring(0, next));
-            }
+            //     includes.Add(iText.Substring(0, next));
+            // }
 
             foreach (var macro in Macros)
                 if (macro.Replace != null) {
@@ -196,7 +212,9 @@ namespace gdmake {
                         if (res is Hook) {
                             this.Hooks.Add(res as Hook);
 
-                            (res as Hook).Includes = includes;
+                            extraIncludes = "#include <hooks.h>\n";
+
+                            // (res as Hook).Includes = includes;
                         }
                     };
                     
@@ -237,13 +255,16 @@ namespace gdmake {
                                 
                                 ReplaceForSubstring(startIndex, endIndex + 1);
 
-                                oText = oText.Remove(text.IndexOf(macro.Text), endIndex - text.IndexOf(macro.Text) + 1);
-
                                 text = text.Substring(startIndex);
                             } break;
                         }
                     }
                 }
+            } catch (Exception e) {
+                Console.WriteLine($"Unable to process GDMake macros in {file}: {e}");
+            }
+
+            oText = extraIncludes + oText;
 
             File.WriteAllText(file, oText);
         }

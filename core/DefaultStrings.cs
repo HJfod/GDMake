@@ -81,10 +81,7 @@ DefaultStrings.HeaderCredit +
 #define __GDMAKE_MOD_H__
 
 #include ""mod.h""
-
-<<GDMAKE_HOOKS_INCLUDES>>
-
-<<GDMAKE_HOOKS_DEFS>>
+#include ""hooks.h""
 
 bool mod::load(HMODULE hModule) {
     auto init = MH_Initialize();
@@ -93,7 +90,7 @@ bool mod::load(HMODULE hModule) {
 
     loadMod(hModule);
 
-    <<GDMAKE_HOOKS>>
+<<GDMAKE_HOOKS>>
 
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) [[unlikely]] {
         MH_Uninitialize();
