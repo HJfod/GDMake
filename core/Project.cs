@@ -90,11 +90,37 @@ namespace gdmake {
             return str;
         }
 
-        private string GenerateModLoad() {
+        private string GenerateModLoad(Preprocessor pre) {
             var str = DefaultStrings.ModLoadSource;
 
             str = str.Replace("<<LOAD_CODE>>", "");
             str = str.Replace("<<UNLOAD_CODE>>", "");
+
+            var hookDefs = "";
+            var hookIncludes = "";
+            var hookCode = "";
+
+            foreach (var hook in pre.Hooks) {
+                foreach (var inc in hook.Includes) {
+                    if (inc[0] == '"') {
+                        var ninc = inc.Substring(1);
+
+                        ninc = $"\"src/{ninc}";
+
+                        hookIncludes += $"#include {ninc}\n";
+                    }
+                    else
+                        hookIncludes += $"#include {inc}\n";
+                }
+
+                hookDefs += $"{hook.GetTrampolineName()};\n{hook.HookData}\n\n";
+
+                hookCode += $"GDMAKE_CREATE_HOOK({hook.Address}, {hook.FuncName}, {hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
+            }
+            
+            str = str.Replace("<<GDMAKE_HOOKS>>", hookCode);
+            str = str.Replace("<<GDMAKE_HOOKS_DEFS>>", hookDefs);
+            str = str.Replace("<<GDMAKE_HOOKS_INCLUDES>>", hookIncludes);
 
             return str;
         }
@@ -150,9 +176,9 @@ namespace gdmake {
 
             CopyAllSourceFiles(Path.Join(dir, "src"));
 
-            Preprocessor.PreprocessAllFilesInFolder(Path.Join(dir, "src"));
+            var pre = Preprocessor.PreprocessAllFilesInFolder(Path.Join(dir, "src"));
             
-            try { File.WriteAllText(Path.Join(dir, "mod.cpp"), GenerateModLoad()); }
+            try { File.WriteAllText(Path.Join(dir, "mod.cpp"), GenerateModLoad(pre)); }
             catch (Exception e) {
                 return new ErrorResult($"Error: {e.Message}");
             }
@@ -172,7 +198,7 @@ namespace gdmake {
             return new SuccessResult();
         }
 
-        public Result Build(string verbosity = "quiet", string config = "RelWithDebInfo") {
+        public Result Build(string verbosity = "silent", string config = "RelWithDebInfo") {
             if (builddir == null)
                 return new ErrorResult("Build directory not set (Make sure to generate first!)");
 
@@ -180,7 +206,9 @@ namespace gdmake {
 
             Console.WriteLine("Building DLL...");
 
-            GDMake.RunBuildBat(Path.Join(builddir), this.Name, config, null, false, verbosity);
+            var verb = verbosity;
+            if (verb == "silent") verb = "quiet";
+            GDMake.RunBuildBat(Path.Join(builddir), this.Name, config, null, verbosity == "silent", verb);
 
             var resDir = Path.Join(builddir, "res");
 

@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.Globalization;
+using utils;
 
 namespace gdmake {
     public class Preprocessor {
@@ -61,31 +63,66 @@ namespace gdmake {
         }
 
         public class Hook : MacroFuncRes {
+            public const string TrampolineExt = "_o";
             public string HookData { get; internal set; }
             public int Address { get; internal set; }
-            public string HookName { get; internal set; }
+            public string FuncName { get; internal set; }
             public string ReturnType { get; internal set; }
             public string CallingConvention { get; internal set; }
-            public List<string> ArgTypes { get; internal set; } = new List<string>();
+            public string Args { get; internal set; }
+            public List<string> Includes { get; internal set; } = new List<string>();
+
+            public string GetTrampolineName() {
+                return $"{this.ReturnType} ({this.CallingConvention}* {this.FuncName}{TrampolineExt})({this.Args})";
+            }
 
             public Hook(string rawData) {
                 var data = rawData.Substring(1);
 
-                var addr = data.Substring(0, data.IndexOf(')'));
+                var addr = data.Substring(0, data.IndexOf(')')).Substring(2);
                 int addri;
 
-                if (!Int32.TryParse(addr, out addri))
+                if (!Int32.TryParse(addr, NumberStyles.HexNumber, null, out addri))
                     Console.WriteLine($"Unable to create hook: {addr} is not a valid address");
                 else {
                     this.Address = addri;
 
                     data = data.Substring(data.IndexOf(')') + 1);
 
+                    this.HookData = data;
+
                     var funcDef = data.Substring(0, data.IndexOf('{'));
 
-                    funcDef = funcDef.Trim();
+                    funcDef = funcDef.Replace("\r\n", "").Trim();
+                    funcDef = Utils.NormalizeWhiteSpaceForLoop(funcDef);
 
-                    // todo: figure out cconv, rtype, args from funcdef
+                    var funcType = funcDef.Substring(0, funcDef.IndexOf("(")).Trim();
+                    var funcParams = funcDef.Substring(
+                        funcDef.IndexOf('(') + 1,
+                        funcDef.IndexOf(')') - funcDef.IndexOf('(') - 1
+                    ).Trim();
+
+                    var types = funcType.Split(' ');
+                    var cconvs = new string[] {
+                        "fastcall",
+                        "thiscall",
+                        "stdcall",
+                        "cdecl",
+                        "vectorcall",
+                        "clrcall"
+                    };
+
+                    for (var i = 0; i < types.Length - 1; i++)
+                        if (cconvs.Any(s => types[i].Contains(s)))
+                            this.CallingConvention = types[i];
+                        else
+                            this.ReturnType += types[i] + ' ';
+                    
+                    this.FuncName = types[types.Length - 1];
+                    this.Args = funcParams;
+
+                    this.HookData = this.HookData.Replace("GDMAKE_ORIG", $"{this.FuncName}{TrampolineExt}");
+                    this.HookData = this.HookData.Replace("GDMAKE_ORIG_S", $"{this.FuncName}{TrampolineExt}");
                 }
             }
         }
@@ -133,6 +170,21 @@ namespace gdmake {
 
         public void GetMacrosAndReplace(string file) {
             var oText = File.ReadAllText(file);
+            var includes = new List<string>();
+
+            var iText = oText;
+
+            while (iText.Contains("#include")) {
+                var ix = iText.IndexOf("#include");
+
+                iText = iText.Substring(ix + "#include".Length).TrimStart();
+
+                var next = iText.IndexOf('>') + 1;
+                if (iText[0] == '"')
+                    next = iText.IndexOf('"', 1) + 1;
+                
+                includes.Add(iText.Substring(0, next));
+            }
 
             foreach (var macro in Macros)
                 if (macro.Replace != null) {
@@ -141,8 +193,11 @@ namespace gdmake {
                     void ReplaceForSubstring(int sx, int ex) {
                         var res = macro.Replace(text.Substring(sx, ex - sx));
 
-                        if (res is Hook)
+                        if (res is Hook) {
                             this.Hooks.Add(res as Hook);
+
+                            (res as Hook).Includes = includes;
+                        }
                     };
                     
                     while (text.Contains(macro.Text)) {
@@ -182,11 +237,15 @@ namespace gdmake {
                                 
                                 ReplaceForSubstring(startIndex, endIndex + 1);
 
+                                oText = oText.Remove(text.IndexOf(macro.Text), endIndex - text.IndexOf(macro.Text) + 1);
+
                                 text = text.Substring(startIndex);
                             } break;
                         }
                     }
                 }
+
+            File.WriteAllText(file, oText);
         }
 
         public static Preprocessor PreprocessAllFilesInFolder(string path) {

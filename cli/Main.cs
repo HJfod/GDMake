@@ -26,7 +26,7 @@ namespace gdmake {
                     Console.WriteLine($"Error: {(res as ErrorResult).Message}");
                 else {
                     res = project.Build(
-                        ap.GetFlagValue("outlvl") ?? "quiet",
+                        ap.GetFlagValue("outlvl") ?? "silent",
                         ap.GetFlagValue("release") ?? "RelWithDebInfo"
                     );
 
