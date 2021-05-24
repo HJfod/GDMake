@@ -24,6 +24,7 @@ namespace gdmake {
         }
 
         private string builddir = null;
+        private List<string> builddlls = null;
 
         public GDMakeFile Dotfile = null;
 
@@ -92,7 +93,7 @@ namespace gdmake {
 
         private string GenerateHookHeader(Preprocessor pre) {
             var str = DefaultStrings.HeaderCredit + 
-            "\n#pragma once\n\n";
+            "\n#pragma once\n\n#include <GDMake.h>\n\n";
 
             foreach (var hook in pre.Hooks)
                 str += $"inline {hook.GetTrampolineName()};\n{hook.GetFunctionSignature()};\n\n";
@@ -116,11 +117,29 @@ namespace gdmake {
             return str;
         }
 
-        private string GenerateCMakeLists() {
+        private string GenerateCMakeLists(List<string> libs) {
             var str = DefaultStrings.CMakeLists;
        
             str = str.Replace("<<GDMAKE_DIR>>", GDMake.ExePath.Replace("\\", "/"));
             str = str.Replace("<<MOD_NAME>>", this.Name);
+            
+            var libstr = "";
+            foreach (var lib in libs)
+                libstr += $"{GDMake.ExePath.Replace("\\", "/")}/{lib}\n";
+
+            str = str.Replace("<<GDMAKE_LIBS>>", libstr);
+
+            var incpath = "";
+            foreach (var sub in GDMake.Submodules) {
+                var path = $"{GDMake.ExePath.Replace("\\", "/")}/submodules/{sub.Name}/include";
+
+                if (File.Exists(path))
+                    incpath += path + "\n";
+                else
+                    incpath += Path.GetDirectoryName(path) + "\n";
+            }
+
+            str = str.Replace("<<GDMAKE_HEADERS>>", incpath);
 
             return str;
         }
@@ -184,12 +203,13 @@ namespace gdmake {
                 return new ErrorResult($"Error: {e.Message}");
             }
 
-            try { File.WriteAllText(Path.Join(dir, "CMakeLists.txt"), GenerateCMakeLists()); }
+            try { File.WriteAllText(Path.Join(dir, "CMakeLists.txt"), GenerateCMakeLists(this.Dotfile.Libs)); }
             catch (Exception e) {
                 return new ErrorResult($"Error: {e.Message}");
             }
 
             this.builddir = dir;
+            this.builddlls = this.Dotfile.Dlls;
 
             return new SuccessResult();
         }
@@ -223,6 +243,10 @@ namespace gdmake {
 
                     File.Copy(file, resPath, true);
                 }
+            
+            if (this.builddlls != null)
+                foreach (var dll in this.builddlls)
+                    File.Copy(dll, Path.Join(resDir));
 
             if (resPath == null)
                 return new ErrorResult("Compile error, see message above");

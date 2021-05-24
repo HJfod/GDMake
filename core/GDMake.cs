@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.IO;
+using System.Text.Json;
 using System.Reflection;
 using System.Collections.Generic;
 using Microsoft.Win32;
@@ -10,18 +11,28 @@ using utils;
 namespace gdmake {
     public static class GDMake {
         public class Submodule {
-            public string Name;
-            public string URL;
-            public string IncludeHeader;
-            public bool CompileLib;
-            public string CMakeDefs;
+            public string Name { get; set; }
+            public string URL { get; set; }
+            public string IncludeHeader { get; set; }
+            public bool CompileLib { get; set; }
+            public string CMakeDefs { get; set; }
+            public string[] LibPaths { get; set; } = null;
 
-            public Submodule(string name, string url, bool lib = true, string defs = "") {
+            public Submodule() {
+                this.Name = "none";
+                this.URL = "";
+                this.IncludeHeader = "none";
+                this.CompileLib = false;
+                this.CMakeDefs = null;
+            }
+
+            public Submodule(string name, string url, bool lib = true, string defs = "", string[] lpath = null) {
                 this.Name = name;
                 this.URL = url;
                 this.IncludeHeader = Name;
                 this.CMakeDefs = defs;
                 this.CompileLib = lib;
+                this.LibPaths = lpath;
             }
         };
 
@@ -29,10 +40,16 @@ namespace gdmake {
         public static string ExePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
         public static Submodule[] DefaultSubmodules = new Submodule[] {
             new Submodule ( "gd.h", "https://github.com/HJfod/gd.h", false ),
-            new Submodule ( "MinHook", "https://github.com/TsudaKageyu/MinHook", true, "-DBUILD_SHARED_LIBS=ON" ),
-            new Submodule ( "Cocos2d", "https://github.com/HJfod/cocos-headers", false ),
+            new Submodule ( "MinHook", "https://github.com/TsudaKageyu/MinHook", true, "-DBUILD_SHARED_LIBS=ON",
+                new string[] { "libs/minhook.x32.lib" } ),
+            new Submodule ( "Cocos2d", "https://github.com/HJfod/cocos-headers", false, null,
+                new string[] {
+                    "submodules/Cocos2d/cocos2dx/libcocos2d.lib",
+                    "submodules/Cocos2d/extensions/libExtensions.lib",
+                } ),
         };
-        public static List<Submodule> Submodules = new List<Submodule>(DefaultSubmodules);
+        public static List<Submodule> Submodules = new List<Submodule>();
+        public static SettingsFile SettingsFile = null;
 
         public static bool IsGlobalInitialized() {
             if (!Directory.Exists(Path.Join(ExePath, "submodules")))
@@ -46,6 +63,8 @@ namespace gdmake {
 
             if (!Directory.Exists(Path.Join(ExePath, "tools")))
                 return false;
+
+            GDMake.LoadSettings();
 
             return true;
         }
@@ -109,6 +128,8 @@ namespace gdmake {
         ) {
             var process = new Process();
 
+            if (String.IsNullOrWhiteSpace(cMakeOpts)) cMakeOpts = null;
+
             process.StartInfo.Arguments = $"\"{cd}\" {pName} {config} {verb} {(cMakeOpts != null ? $"\"{cMakeOpts}\"" : "")}";
             process.StartInfo.FileName = Path.Join(ExePath, "build.bat");
             process.StartInfo.UseShellExecute = false;
@@ -120,7 +141,14 @@ namespace gdmake {
             process.WaitForExit();
         }
 
-        public static Result<string> GetGDPath() {
+        public static Result<string> GetGDPath(bool figureOut = false) {
+            if (!figureOut) {
+                LoadSettings();
+
+                if (SettingsFile.GDPath != null)
+                    return new SuccessResult<string>(SettingsFile.GDPath);
+            }
+
             var regv = Registry.LocalMachine.OpenSubKey(@"Software\WOW6432Node\Valve\Steam", false)?.GetValue("InstallPath");
         
             if (regv == null)
@@ -195,25 +223,25 @@ namespace gdmake {
         }
 
         public static void CompileLibs() {
-            if (!Directory.Exists(Path.Join(ExePath, "libs")) || IsDirectoryEmpty(Path.Join(ExePath, "libs"))) {
-                Console.WriteLine("Building libraries...");
+            LoadSettings();
 
-                Directory.CreateDirectory(Path.Join(ExePath, "libs"));
-                Directory.CreateDirectory(Path.Join(ExePath, "dlls"));
+            Directory.CreateDirectory(Path.Join(ExePath, "libs"));
+            Directory.CreateDirectory(Path.Join(ExePath, "dlls"));
 
-                foreach (var sub in Submodules)
-                    if (sub.CompileLib) {
-                        RunBuildBat(Path.Join(ExePath, "submodules", sub.Name), sub.Name, "Release", sub.CMakeDefs, true);
+            foreach (var sub in Submodules)
+                if (sub.CompileLib) {
+                    Console.WriteLine($"Building {sub.Name}...");
 
-                        foreach (var file in Directory.GetFiles(
-                            Path.Join(ExePath, "submodules", sub.Name, "build", "Release")
-                        ))
-                            if (file.EndsWith(".dll"))
-                                File.Copy(file, Path.Join(ExePath, "dlls", Path.GetFileName(file)), true);
-                            else if (file.EndsWith(".lib"))
-                                File.Copy(file, Path.Join(ExePath, "libs", Path.GetFileName(file)), true);
-                    }
-            }
+                    RunBuildBat(Path.Join(ExePath, "submodules", sub.Name), sub.Name, "Release", sub.CMakeDefs, true);
+
+                    foreach (var file in Directory.GetFiles(
+                        Path.Join(ExePath, "submodules", sub.Name, "build", "Release")
+                    ))
+                        if (file.EndsWith(".dll"))
+                            File.Copy(file, Path.Join(ExePath, "dlls", Path.GetFileName(file)), true);
+                        else if (file.EndsWith(".lib"))
+                            File.Copy(file, Path.Join(ExePath, "libs", Path.GetFileName(file)), true);
+                }
 
             if (!Directory.Exists(Path.Join(ExePath, "tools", "bin")) || IsDirectoryEmpty(Path.Join(ExePath, "tools", "bin"))) {
                 Console.WriteLine("Building GDMake tools...");
@@ -237,28 +265,144 @@ namespace gdmake {
             }
         }
 
-        public static Result InitializeGlobal() {
+        public static void LoadSettings() {
+            if (SettingsFile == null) {
+                SettingsFile = JsonSerializer.Deserialize<SettingsFile>(
+                    File.ReadAllText(Path.Join(ExePath, "GDMakeSettings.json"))
+                );
+
+                Submodules = SettingsFile.Submodules;
+            }
+
+            CheckSubmodules();
+        }
+
+        public static Result SaveSettings() {
+            CheckSubmodules();
+
+            try {
+                var sett_str = JsonSerializer.Serialize<SettingsFile>(
+                    SettingsFile, new JsonSerializerOptions { WriteIndented = true }
+                );
+
+                File.WriteAllText(Path.Join(ExePath, "GDMakeSettings.json"), sett_str);
+            } catch (Exception) {
+                return new ErrorResult("Unable to save settings!");
+            }
+
+            return new SuccessResult();
+        }
+
+        public static void ForceDeleteDirectory(string target_dir) {
+            string[] files = Directory.GetFiles(target_dir);
+            string[] dirs = Directory.GetDirectories(target_dir);
+
+            foreach (string file in files) {
+                File.SetAttributes(file, FileAttributes.Normal);
+                File.Delete(file);
+            }
+
+            foreach (string dir in dirs)
+                ForceDeleteDirectory(dir);
+
+            Directory.Delete(target_dir, false);
+        }
+
+        public static void CheckSubmodules() {
+            Submodules = Submodules.GroupBy(x => x.Name).Select(x => x.First()).ToList();
+            if (SettingsFile != null)
+                SettingsFile.Submodules = Submodules;
+        }
+
+        public static void AddSubmodule(Submodule sub) {
+            CheckSubmodules();
+
+            Console.WriteLine($"Installing {sub.Name}...");
+
+            var path = Path.Join(ExePath, "submodules", sub.Name);
+
+            if (Directory.Exists(path)) {
+                Console.WriteLine($"{sub.Name} has already been installed!");
+
+                Submodules.Add(sub);
+                return;
+            }
+
+            LibGit2Sharp.Repository.Clone(sub.URL, path, new LibGit2Sharp.CloneOptions { RecurseSubmodules = true });
+
+            Submodules.Add(sub);
+
+            var res = SaveSettings();
+            if (res.Failure)
+                Console.WriteLine((res as ErrorResult).Message);
+
+            CheckSubmodules();
+        }
+
+        public static Result RemoveSubmodule(string name) {
+            CheckSubmodules();
+
+            var dirPath = Path.Join(ExePath, "submodules", name);
+
+            if (!Directory.Exists(dirPath))
+                return new ErrorResult($"Submodule {name} does not exist!");
+        
+            try {
+                ForceDeleteDirectory(dirPath);
+            } catch (Exception) {
+                return new ErrorResult($"Unable to delete directory!");
+            }
+
+            foreach (var sub in Submodules)
+                if (sub.Name == name) {
+                    Submodules.Remove(sub);
+                    break;
+                }
+
+            CheckSubmodules();
+
+            SaveSettings();
+
+            return new SuccessResult();
+        }
+
+        public static Result InitializeGlobal(bool re = false) {
             foreach (var dir in new string[] {
+                "builds",
                 "submodules",
                 "include",
                 "src",
                 "tools",
-            })
+                "libs",
+                "dlls",
+            }) {
+                if (re) try { ForceDeleteDirectory(Path.Join(ExePath, dir)); }
+                catch (Exception) {}
+                
                 try { Directory.CreateDirectory(Path.Join(ExePath, dir)); }
                 catch (Exception e) {
                     return new ErrorResult($"Unable to create directory: {e.Message}");
                 }
+            }
+
+            if (re) {
+                var settings = new SettingsFile();
+                var res = GetGDPath(true);
+
+                if (res.Failure)
+                    return res;
+
+                settings.GDPath = res.Data.Replace("\\\\", "\\").Replace("\\", "/");
+
+                SaveSettings();
+
+                SettingsFile = settings;
+            } else
+                LoadSettings();
 
             foreach (var sub in DefaultSubmodules)
                 try {
-                    Console.WriteLine($"Installing {sub.Name}...");
-
-                    var path = Path.Join(ExePath, "submodules", sub.Name);
-
-                    if (Directory.Exists(path))
-                        continue;
-
-                    LibGit2Sharp.Repository.Clone(sub.URL, path);
+                    AddSubmodule(sub);
                 } catch (Exception e) {
                     return new ErrorResult($"Unable to install submodule {sub.Name}: {e.Message}");
                 }

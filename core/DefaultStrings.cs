@@ -197,13 +197,13 @@ target_include_directories(
     <<GDMAKE_DIR>>/submodules/gd.h
     <<GDMAKE_DIR>>/submodules/MinHook/include
     <<GDMAKE_DIR>>/include
+    ${CMAKE_SOURCE_DIR}
+    <<GDMAKE_HEADERS>>
 )
 
 target_link_libraries(
     ${PROJECT_NAME}
-    <<GDMAKE_DIR>>/submodules/Cocos2d/cocos2dx/libcocos2d.lib
-    <<GDMAKE_DIR>>/submodules/Cocos2d/extensions/libExtensions.lib
-    <<GDMAKE_DIR>>/libs/minhook.x32.lib
+    <<GDMAKE_LIBS>>
 )
 ";
 

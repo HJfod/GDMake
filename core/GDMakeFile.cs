@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 
 namespace gdmake {
@@ -17,6 +18,12 @@ namespace gdmake {
         public TargetCompiler Compiler { get; set; } = TargetCompiler.MSVC;
         public TargetPlatform Platform { get; set; } = TargetPlatform.Win32;
         public List<string> IgnoredFiles { get; set; } = new List<string>();
+        public List<string> Libs { get; set; } = GDMake.DefaultSubmodules
+            .Where(x => x.LibPaths != null)
+            .SelectMany(x => x.LibPaths)
+            .ToList();
+        public List<string> Dlls { get; set; } = null;
+        public List<string> Resources { get; set; } = new List<string>();
 
         public GDMakeFile() {
             this.ProjectName = null;

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Linq;
 using System.Collections.Generic;
 using System.Globalization;
@@ -202,6 +203,8 @@ namespace gdmake {
             //     includes.Add(iText.Substring(0, next));
             // }
 
+            var offset = 0;
+
             foreach (var macro in Macros)
                 if (macro.Replace != null) {
                     var text = oText;
@@ -213,6 +216,14 @@ namespace gdmake {
                             this.Hooks.Add(res as Hook);
 
                             extraIncludes = "#include <hooks.h>\n";
+
+                            var l = "GDMAKE_HOOK".Length;
+                            var aStringBuilder = new StringBuilder(oText);
+                            aStringBuilder.Remove(sx - l + offset, ex - sx + l);
+                            aStringBuilder.Insert(sx - l + offset, (res as Hook).HookData);
+                            oText = aStringBuilder.ToString();
+
+                            offset = (res as Hook).HookData.Length - (ex - sx - l - l - 1);
 
                             // (res as Hook).Includes = includes;
                         }
