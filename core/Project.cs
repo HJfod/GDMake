@@ -221,7 +221,7 @@ namespace gdmake {
             if (builddir == null)
                 return new ErrorResult("Build directory not set (Make sure to generate first!)");
 
-            GDMake.CompileLibs();
+            // GDMake.CompileLibs();
 
             Console.WriteLine("Building DLL...");
 
