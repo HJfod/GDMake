@@ -130,19 +130,8 @@ namespace gdmake {
             str = str.Replace("<<GDMAKE_LIBS>>", libstr);
 
             var incpath = "";
-            foreach (var sub in GDMake.Submodules) {
-                var path = $"{GDMake.ExePath.Replace("\\", "/")}/submodules/{sub.Name}/include";
-
-                foreach (var subi in Directory.GetDirectories(
-                    Path.Join(GDMake.ExePath, "submodules", sub.Name), "include", SearchOption.TopDirectoryOnly)
-                )
-                    incpath += Path.GetFullPath(subi).Replace("\\", "/") + "\n";
-
-                incpath += Path.GetDirectoryName(path).Replace("\\", "/") + "\n";
-            }
-
-            foreach (var inc in GDMake.SettingsFile.IncludePaths)
-                incpath += Path.Join(GDMake.ExePath, inc).Replace("\\", "/") + "\n";
+            foreach (var inc in GDMake.GetIncludePath())
+                incpath += inc + "\n";
 
             str = str.Replace("<<GDMAKE_HEADERS>>", incpath);
 

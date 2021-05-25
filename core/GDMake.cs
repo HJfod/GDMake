@@ -16,7 +16,8 @@ namespace gdmake {
             public string IncludeHeader { get; set; }
             public bool CompileLib { get; set; }
             public string CMakeDefs { get; set; }
-            public string[] LibPaths { get; set; } = null;
+            public string[] LibPaths { get; set; } = null; 
+            public HashSet<string> IncludePaths { get; set; } = new HashSet<string>();
 
             public Submodule() {
                 this.Name = "none";
@@ -26,13 +27,22 @@ namespace gdmake {
                 this.CMakeDefs = null;
             }
 
-            public Submodule(string name, string url, bool lib = true, string defs = "", string[] lpath = null) {
+            public Submodule(
+                string name,
+                string url,
+                bool lib = true,
+                string defs = "",
+                string[] lpath = null,
+                HashSet<string> ipath = null
+            ) {
                 this.Name = name;
                 this.URL = url;
                 this.IncludeHeader = Name;
                 this.CMakeDefs = defs;
                 this.CompileLib = lib;
                 this.LibPaths = lpath;
+                if (ipath != null)
+                    this.IncludePaths = ipath;
             }
         };
 
@@ -46,12 +56,20 @@ namespace gdmake {
                 new string[] {
                     "submodules/Cocos2d/cocos2dx/libcocos2d.lib",
                     "submodules/Cocos2d/extensions/libExtensions.lib",
+                },
+                new HashSet<string> {
+                    $"{ExePath}/submodules/Cocos2d/cocos2dx",
+                    $"{ExePath}/submodules/Cocos2d/cocos2dx/include",
+                    $"{ExePath}/submodules/Cocos2d/cocos2dx/kazmath/include",
+                    $"{ExePath}/submodules/Cocos2d/cocos2dx/platform/third_party/win32/OGLES",
+                    $"{ExePath}/submodules/Cocos2d/cocos2dx/platform/win32",
+                    $"{ExePath}/submodules/Cocos2d/extensions",
                 } ),
         };
-        public static List<Submodule> Submodules = new List<Submodule>();
+        public static HashSet<Submodule> Submodules = new HashSet<Submodule>();
         public static SettingsFile SettingsFile = null;
 
-        public static bool IsGlobalInitialized() {
+        public static bool IsGlobalInitialized(bool dontLoadSettings = false) {
             if (!Directory.Exists(Path.Join(ExePath, "submodules")))
                 return false;
 
@@ -67,7 +85,8 @@ namespace gdmake {
             if (!File.Exists(Path.Join(ExePath, "GDMakeSettings.json")))
                 return false;
             
-            GDMake.LoadSettings();
+            if (!dontLoadSettings)
+                GDMake.LoadSettings();
 
             return true;
         }
@@ -283,6 +302,17 @@ namespace gdmake {
             CheckSubmodules();
         }
 
+        public static List<string> GetIncludePath() {
+            var res = new List<string>();
+
+            foreach (var sub in GDMake.Submodules)
+                if (sub.IncludePaths != null)
+                    foreach (var inc in sub.IncludePaths)
+                        res.Add(inc);
+            
+            return res;
+        }
+
         public static Result SaveSettings() {
             CheckSubmodules();
 
@@ -315,9 +345,17 @@ namespace gdmake {
         }
 
         public static void CheckSubmodules() {
-            Submodules = Submodules.GroupBy(x => x.Name).Select(x => x.First()).ToList();
+            Submodules = Submodules.GroupBy(x => x.Name).Select(x => x.First()).ToHashSet();
             if (SettingsFile != null)
                 SettingsFile.Submodules = Submodules;
+        }
+
+        public static Submodule GetSubmoduleByName(string name) {
+            foreach (var sub in Submodules)
+                if (sub.Name == name)
+                    return sub;
+                
+            return null;
         }
 
         public static void AddSubmodule(Submodule sub) {
@@ -337,6 +375,15 @@ namespace gdmake {
             LibGit2Sharp.Repository.Clone(sub.URL, path, new LibGit2Sharp.CloneOptions { RecurseSubmodules = true });
 
             Submodules.Add(sub);
+
+            sub.IncludePaths.Add($"{GDMake.ExePath.Replace("\\", "/")}/submodules/{sub.Name}");
+
+            foreach (var subi in Directory.GetDirectories(
+                Path.Join(GDMake.ExePath, "submodules", sub.Name), "include", SearchOption.TopDirectoryOnly)
+            )
+                sub.IncludePaths.Add(Path.GetFullPath(subi).Replace("\\", "/"));
+
+            GenerateIncludeFiles();
 
             var res = SaveSettings();
             if (res.Failure)
@@ -373,7 +420,7 @@ namespace gdmake {
         }
 
         public static Result InitializeGlobal(bool re = false) {
-            if (!IsGlobalInitialized())
+            if (!IsGlobalInitialized(true))
                 re = true;
 
             foreach (var dir in new string[] {
@@ -395,6 +442,10 @@ namespace gdmake {
             }
 
             if (re) {
+                Submodules = new HashSet<Submodule>();
+
+                File.Delete(Path.Join(ExePath, "GDMakeSettings.json"));
+
                 SettingsFile = new SettingsFile();
                 var res = GetGDPath(true);
 

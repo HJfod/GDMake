@@ -435,15 +435,23 @@ Commands (Use help <command> for extra information):"
                                     return;
                                 }
 
-                                if (args.Count < 1)
-                                    Console.WriteLine("Usage: submodules add-path <path>");
+                                if (args.Count < 2)
+                                    Console.WriteLine("Usage: submodules add-path <submodule> <path>");
                                 else
-                                    if (!Directory.Exists(Path.Join(GDMake.ExePath, args[0])))
-                                        Console.WriteLine($"Directory {args[0]} does not exist!");
+                                    if (!Directory.Exists(Path.Join(GDMake.ExePath, "submodules", args[0], args[1])))
+                                        Console.WriteLine($"Directory submodules/{args[0]}/{args[1]} does not exist!");
                                     else {
-                                        GDMake.SettingsFile.IncludePaths.Add(args[0]);
+                                        var sub = GDMake.GetSubmoduleByName(args[0]);
 
-                                        GDMake.SaveSettings();
+                                        if (sub == null)
+                                            Console.WriteLine($"Submodule {sub} does not exist!");
+                                        else {
+                                            sub.IncludePaths.Add(
+                                                Path.Join(GDMake.ExePath, "submodules", args[0], args[1]).Replace("\\", "/")
+                                            );
+
+                                            GDMake.SaveSettings();
+                                        }
                                     }
                             })},
                         }, args => {
@@ -458,18 +466,8 @@ Commands (Use help <command> for extra information):"
                         })},
 
                         { "dump-include-path", new ArgHandler (null, args => {
-                            Console.WriteLine(
-                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx\n" +
-                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx/include\n" +
-                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx/kazmath/include\n" +
-                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx/platform/third_party/win32/OGLES\n" +
-                                $"{GDMake.ExePath}/submodules/Cocos2d/cocos2dx/platform/win32\n" +
-                                $"{GDMake.ExePath}/submodules/Cocos2d/extensions\n" +
-                                $"{GDMake.ExePath}/submodules/gd.h/include\n" +
-                                $"{GDMake.ExePath}/submodules/gd.h\n" +
-                                $"{GDMake.ExePath}/submodules/MinHook/include\n" +
-                                $"{GDMake.ExePath}/include"
-                            );
+                            foreach (var inc in GDMake.GetIncludePath())
+                                Console.WriteLine(inc);
                         })},
 
                         { "known-addresses", new ArgHandler (null, args => {

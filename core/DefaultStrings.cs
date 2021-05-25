@@ -187,16 +187,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX """")
 
 target_include_directories(
     ${PROJECT_NAME} PRIVATE
-    <<GDMAKE_DIR>>/submodules/Cocos2d/cocos2dx
-    <<GDMAKE_DIR>>/submodules/Cocos2d/cocos2dx/include
-    <<GDMAKE_DIR>>/submodules/Cocos2d/cocos2dx/kazmath/include
-    <<GDMAKE_DIR>>/submodules/Cocos2d/cocos2dx/platform/third_party/win32/OGLES
-    <<GDMAKE_DIR>>/submodules/Cocos2d/cocos2dx/platform/win32
-    <<GDMAKE_DIR>>/submodules/Cocos2d/extensions
-    <<GDMAKE_DIR>>/submodules/gd.h/include
-    <<GDMAKE_DIR>>/submodules/gd.h
-    <<GDMAKE_DIR>>/submodules/MinHook/include
-    <<GDMAKE_DIR>>/include
     ${CMAKE_SOURCE_DIR}
     <<GDMAKE_HEADERS>>
 )
