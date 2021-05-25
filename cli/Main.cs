@@ -53,8 +53,9 @@ namespace gdmake {
                     str += param.Optional ? ']' : '>';
                     str += ' ';
                 }
-
-                str = str.Substring(0, str.Length - 1);
+                
+                if (str != "")
+                    str = str.Substring(0, str.Length - 1);
 
                 return str;
             }
@@ -68,7 +69,11 @@ namespace gdmake {
         public static readonly Dictionary<string, Doc> Docs = new Dictionary<string, Doc> {
             { "setup", new Doc(
                 "Setup GDMake",
-                new Doc.Param[] { new Doc.Param( "re", true, TType.tFlag, "Reinitialize from scratch" ) }
+                new Doc.Param[] {
+                    new Doc.Param( "re", true, TType.tFlag, "Reinitialize from scratch" ),
+                    new Doc.Param( "gdpath", true, TType.tFlagWValue, "Get / set GeometryDash.exe path" ),
+                    new Doc.Param( "path", true, TType.tFlag, "Print GDMake installation path" ),
+                }
             ) },
             { "init", new Doc(
                 "Initialize a new GDMake project",
@@ -121,6 +126,14 @@ namespace gdmake {
                     new Doc.Param( "command", false, "Command name" ),
                 }
             ) },
+            { "known-addresses", new Doc(
+                "List known addresses",
+                new Doc.Param[] {}
+            ) },
+            { "dump-include-path", new Doc(
+                "Print submodules include path",
+                new Doc.Param[] {}
+            ) },
         };
 
         public static void ShowHelpMessage() {
@@ -134,7 +147,7 @@ Commands (Use help <command> for extra information):"
 
             foreach (var doc in Docs)
                 Console.WriteLine(
-                    $"{doc.Value.Description}{new String(' ', 40 - doc.Value.Description.Length)}" +
+                    $"{doc.Value.Description}{new String(' ', Math.Abs(40 - doc.Value.Description.Length))}" +
                     $"{(doc.Key == "default" ? "" : doc.Key + " ")}{doc.Value.GenerateCommandParamText()}"
                 );
         }
@@ -201,6 +214,8 @@ Commands (Use help <command> for extra information):"
             var res = ap.Parse(allArgs);
 
             if (res.Success) {
+                Addresses.LoadUserAddresses();
+
                 ap.RunDict(new ArgHandler (
                     new AHDict {
                         { "init", new ArgHandler (null, args => {
@@ -318,6 +333,12 @@ Commands (Use help <command> for extra information):"
                                     return;
                                 }
 
+                                if (ap.HasFlag("path")) {
+                                    Console.WriteLine(GDMake.ExePath);
+
+                                    return;
+                                }
+
                                 var res = GDMake.InitializeGlobal(ap.HasFlag("re"));
 
                                 if (res.Failure)
@@ -410,6 +431,11 @@ Commands (Use help <command> for extra information):"
                                 $"{GDMake.ExePath}/submodules/MinHook/include\n" +
                                 $"{GDMake.ExePath}/include"
                             );
+                        })},
+
+                        { "known-addresses", new ArgHandler (null, args => {
+                            foreach (var kp in Addresses.Names)
+                                Console.WriteLine($"{kp.Key}{new String(' ', 35 - kp.Key.Length)}0x{kp.Value.ToString("X")}");
                         })},
                     },
                     args => {

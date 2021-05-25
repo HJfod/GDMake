@@ -26,5 +26,13 @@ namespace gdmake {
             { "SetGroupIDLayer.init", 0x22b670 },
             { "ShareCommentLayer.init", 0x24bb90 },
         };
+
+        public static void LoadUserAddresses() {
+            if (!GDMake.IsGlobalInitialized())
+                return;
+
+            foreach (var addr in GDMake.SettingsFile.Addresses)
+                Names.Add(addr.Item1, addr.Item2);
+        }
     }
 }
