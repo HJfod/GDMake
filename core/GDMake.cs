@@ -87,7 +87,8 @@ namespace gdmake {
                 includeText += $"#include <{(sub.IncludeHeader.EndsWith(".h") ? sub.IncludeHeader : sub.IncludeHeader + ".h")}>\n";
 
             includeText += "#pragma warning(pop)\n\n";
-            includeText += "#include \"GDMakeMacros.h\"\n\n";
+            includeText += "#include \"GDMakeMacros.h\"\n";
+            includeText += "#include \"GDMakeHelpers.h\"\n\n";
             includeText += DefaultStrings.GDMakeModNS + "\n";
             includeText += "#endif";
 
@@ -106,6 +107,7 @@ namespace gdmake {
 
             File.WriteAllText(Path.Join(ExePath, "include/GDMakeMacros.h"), includeMacros);
             File.WriteAllText(Path.Join(ExePath, "include/GDMake.h"), includeText);
+            File.WriteAllText(Path.Join(ExePath, "include/GDMakeHelpers.h"), DefaultStrings.HelpersCpp);
         }
 
         private static void GenerateSourceFiles() {

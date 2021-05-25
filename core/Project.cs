@@ -93,7 +93,7 @@ namespace gdmake {
 
         private string GenerateHookHeader(Preprocessor pre) {
             var str = DefaultStrings.HeaderCredit + 
-            "\n#pragma once\n\n#include <GDMake.h>\n\n";
+            "\n#pragma once\n\n#include <GDMake.h>\n\nusing namespace gdmake;\n\n";
 
             foreach (var hook in pre.Hooks)
                 str += $"inline {hook.GetTrampolineName()};\n{hook.GetFunctionSignature()};\n\n";
