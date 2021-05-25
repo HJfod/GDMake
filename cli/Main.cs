@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using utils;
@@ -406,6 +407,44 @@ Commands (Use help <command> for extra information):"
                                     else
                                         Console.WriteLine("Removed submodule!");
                                 }
+                            })},
+
+                            { "add-lib", new ArgHandler(null, args => {
+                                if (!GDMake.IsGlobalInitialized()) {
+                                    GDMake.ShowGlobalNotInitializedError();
+                                    return;
+                                }
+
+                                if (args.Count < 1)
+                                    Console.WriteLine("Usage: submodules add-lib <path-to-lib>");
+                                else
+                                    if (!File.Exists(args[0]))
+                                        Console.WriteLine($"File {args[0]} does not exist!");
+                                    else {
+                                        File.Copy(
+                                            args[0],
+                                            Path.Join(GDMake.ExePath, "libs", Path.GetFileName(args[0])),
+                                            true
+                                        );
+                                    }
+                            })},
+
+                            { "add-path", new ArgHandler(null, args => {
+                                if (!GDMake.IsGlobalInitialized()) {
+                                    GDMake.ShowGlobalNotInitializedError();
+                                    return;
+                                }
+
+                                if (args.Count < 1)
+                                    Console.WriteLine("Usage: submodules add-path <path>");
+                                else
+                                    if (!Directory.Exists(Path.Join(GDMake.ExePath, args[0])))
+                                        Console.WriteLine($"Directory {args[0]} does not exist!");
+                                    else {
+                                        GDMake.SettingsFile.IncludePaths.Add(args[0]);
+
+                                        GDMake.SaveSettings();
+                                    }
                             })},
                         }, args => {
                             ShowHelpForCommand("submodules");

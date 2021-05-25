@@ -4,8 +4,7 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${vcpkgRoot}/x86-windows/include",
-                "K:\\gdmake\\bin\\Debug\\net5.0\\win10-x64\\include"
+                "${vcpkgRoot}/x86-windows/include"
             ],
             "defines": [
                 "_DEBUG",

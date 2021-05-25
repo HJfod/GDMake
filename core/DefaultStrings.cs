@@ -174,8 +174,8 @@ set(PROJECT_NAME <<MOD_NAME>>)
 project(${PROJECT_NAME} VERSION 1.0.0)
 
 file(GLOB_RECURSE SOURCES 
-    dllmain.cpp
-    mod.cpp
+    <<?GDMAKE_DLLMAIN>>dllmain.cpp
+    <<?GDMAKE_DLLMAIN>>mod.cpp
     <<GDMAKE_DIR>>/src/console.cpp
     src/*.cpp
 )

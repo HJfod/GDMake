@@ -37,7 +37,7 @@ namespace gdmake {
         };
 
         public const string DotfileName = ".gdmake";
-        public static string ExePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+        public static string ExePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location).Replace("\\", "/");
         public static Submodule[] DefaultSubmodules = new Submodule[] {
             new Submodule ( "gd.h", "https://github.com/HJfod/gd.h", false ),
             new Submodule ( "MinHook", "https://github.com/TsudaKageyu/MinHook", true, "-DBUILD_SHARED_LIBS=ON",

@@ -14,6 +14,7 @@ namespace gdmake {
 
         public string ProjectName { get; set; }
         public string EntryPoint { get; set; } = null;
+        public string Version { get; set; } = "v1.0";
         public bool ConsoleEnabled { get; set; } = false;
         public TargetCompiler Compiler { get; set; } = TargetCompiler.MSVC;
         public TargetPlatform Platform { get; set; } = TargetPlatform.Win32;

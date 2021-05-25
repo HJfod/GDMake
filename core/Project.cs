@@ -55,7 +55,7 @@ namespace gdmake {
                 return new ErrorResult<string>($"Unable to create {GDMake.DotfileName} file: {e.Message}");
             }
 
-            if (mkexample)
+            if (mkexample && !File.Exists(Path.Join(this.Dir, "main.cpp")))
                 File.WriteAllText(Path.Join(this.Dir, "main.cpp"), DefaultStrings.ExampleProjectCpp);
 
             if (alreadyExists)
@@ -133,13 +133,20 @@ namespace gdmake {
             foreach (var sub in GDMake.Submodules) {
                 var path = $"{GDMake.ExePath.Replace("\\", "/")}/submodules/{sub.Name}/include";
 
-                if (File.Exists(path))
-                    incpath += path + "\n";
-                else
-                    incpath += Path.GetDirectoryName(path) + "\n";
+                foreach (var subi in Directory.GetDirectories(
+                    Path.Join(GDMake.ExePath, "submodules", sub.Name), "include", SearchOption.TopDirectoryOnly)
+                )
+                    incpath += Path.GetFullPath(subi).Replace("\\", "/") + "\n";
+
+                incpath += Path.GetDirectoryName(path).Replace("\\", "/") + "\n";
             }
 
+            foreach (var inc in GDMake.SettingsFile.IncludePaths)
+                incpath += Path.Join(GDMake.ExePath, inc).Replace("\\", "/") + "\n";
+
             str = str.Replace("<<GDMAKE_HEADERS>>", incpath);
+
+            str = GDMake.FilterDefaultString(str, "<<?GDMAKE_DLLMAIN>>", this.Dotfile.EntryPoint == null);
 
             return str;
         }
@@ -174,10 +181,14 @@ namespace gdmake {
             if (dir == null)
                 return new ErrorResult("Unable to create build directory!");
 
-            try { File.WriteAllText(Path.Join(dir, "dllmain.cpp"), GenerateDLLMain()); }
-            catch (Exception e) {
-                return new ErrorResult($"Error: {e.Message}");
-            }
+            if (Dotfile.EntryPoint == null)
+                try { File.WriteAllText(Path.Join(dir, "dllmain.cpp"), GenerateDLLMain()); }
+                catch (Exception e) {
+                    return new ErrorResult($"Error: {e.Message}");
+                }
+
+            if (Directory.Exists(Path.Join(dir, "src")))
+                GDMake.ForceDeleteDirectory(Path.Join(dir, "src"));
 
             try { Directory.CreateDirectory(Path.Join(dir, "src")); }
             catch (Exception e) {
@@ -188,20 +199,23 @@ namespace gdmake {
 
             var pre = Preprocessor.PreprocessAllFilesInFolder(Path.Join(dir, "src"));
             
-            try { File.WriteAllText(Path.Join(dir, "hooks.h"), GenerateHookHeader(pre)); }
-            catch (Exception e) {
-                return new ErrorResult($"Error: {e.Message}");
-            }
+            if (Dotfile.EntryPoint == null)
+                try { File.WriteAllText(Path.Join(dir, "hooks.h"), GenerateHookHeader(pre)); }
+                catch (Exception e) {
+                    return new ErrorResult($"Error: {e.Message}");
+                }
 
-            try { File.WriteAllText(Path.Join(dir, "mod.cpp"), GenerateModLoad(pre)); }
-            catch (Exception e) {
-                return new ErrorResult($"Error: {e.Message}");
-            }
+            if (Dotfile.EntryPoint == null)
+                try { File.WriteAllText(Path.Join(dir, "mod.cpp"), GenerateModLoad(pre)); }
+                catch (Exception e) {
+                    return new ErrorResult($"Error: {e.Message}");
+                }
 
-            try { File.WriteAllText(Path.Join(dir, "mod.h"), DefaultStrings.ModLoadHeader); }
-            catch (Exception e) {
-                return new ErrorResult($"Error: {e.Message}");
-            }
+            if (Dotfile.EntryPoint == null)
+                try { File.WriteAllText(Path.Join(dir, "mod.h"), DefaultStrings.ModLoadHeader); }
+                catch (Exception e) {
+                    return new ErrorResult($"Error: {e.Message}");
+                }
 
             try { File.WriteAllText(Path.Join(dir, "CMakeLists.txt"), GenerateCMakeLists(this.Dotfile.Libs)); }
             catch (Exception e) {
