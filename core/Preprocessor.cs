@@ -92,12 +92,13 @@ namespace gdmake {
                 if (!Int32.TryParse(addr.Substring(2), NumberStyles.HexNumber, null, out addri))
                     addri = Addresses.Names.GetValueOrDefault(addr.Replace(" ", "").Replace("::", "."), 0);
                 
-                if (addri == 0)
-                    Console.WriteLine($"Unable to create hook: {addr} is not a valid address");
-                else {
-                    try {
-                        this.Address = addri;
+                this.Address = addri;
 
+                if (addri == 0) {
+                    Console.WriteLine($"Unable to create hook: {addr} is not a valid address");
+                    this.HookData = rawData;
+                } else {
+                    try {
                         data = data.Substring(data.IndexOf(')') + 1);
 
                         this.HookData = data;
@@ -212,6 +213,11 @@ namespace gdmake {
                         var res = macro.Replace(oText.Substring(sx, ex));
 
                         if (res is Hook) {
+                            if ((res as Hook).Address == 0) {
+                                Console.WriteLine($"^^ Note: in {Path.GetFileName(file)}");
+                                return;
+                            }
+
                             this.Hooks.Add(res as Hook);
 
                             if (!extraIncludes.Contains("#include <hooks.h>"))
@@ -246,7 +252,7 @@ namespace gdmake {
                             } break;
                             
                             case Macro.EReplaceType.NextFunction: {
-                                var startIndex = oText.IndexOf(macro.Text);
+                                var startIndex = oText.IndexOf(macro.Text, index);
                                 var six = startIndex + macro.Text.Length;
                                 six = oText.IndexOf('(', six);
 
@@ -260,9 +266,9 @@ namespace gdmake {
                                         }
                                     else break;
 
-                                ReplaceForSubstring(startIndex, endIndex - startIndex + 1);
-
                                 index += six;
+
+                                ReplaceForSubstring(startIndex, endIndex - startIndex + 1);
                             } break;
                         }
                     }
