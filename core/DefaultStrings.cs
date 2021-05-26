@@ -56,7 +56,7 @@ BOOL APIENTRY DllMain(
         public const string GDMakeModNS =
 @"
 namespace mod {
-    void loadMod(HMODULE);
+    bool loadMod(HMODULE);
     void unloadMod();
 }
 ";
@@ -88,7 +88,8 @@ bool mod::load(HMODULE hModule) {
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) [[unlikely]]
         return false;
 
-    loadMod(hModule);
+    if (!loadMod(hModule))
+        return false;
 
 <<GDMAKE_HOOKS>>
 
@@ -347,6 +348,11 @@ GDMAKE_MAIN {
     // you don't have to enable hooks, as
     // they are automatically enabled after
     // this method.
+
+    // return true if load was succesful,
+    // false if an error occurred.
+
+    return true;
 }
 
 GDMAKE_UNLOAD {

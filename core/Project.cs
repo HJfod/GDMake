@@ -101,7 +101,7 @@ namespace gdmake {
             foreach (var hook in pre.Hooks) {
                 foreach (var inc in hook.IncludesAndUsings)
                     includes += inc + "\n";
-                
+
                 hooks += $"inline {hook.GetTrampolineName()};\n{hook.GetFunctionSignature()};\n\n";
             }
 
@@ -235,6 +235,10 @@ namespace gdmake {
 
             Console.WriteLine("Building DLL...");
 
+            if (Directory.Exists(Path.Join(builddir, "build", config)))
+                foreach (var file in Directory.GetFiles(Path.Join(builddir, "build", config), "*.dll"))
+                    try { File.Delete(file); } catch (Exception) {}
+
             var verb = verbosity;
             if (verb == "silent") verb = "quiet";
             GDMake.RunBuildBat(Path.Join(builddir), this.Name, config, null, verbosity == "silent", verb);
@@ -242,8 +246,9 @@ namespace gdmake {
             var resDir = Path.Join(builddir, "res");
 
             if (Directory.Exists(resDir))
-                foreach (var file in Directory.GetFiles(resDir, "*.dll"))
-                    File.Delete(file);
+                foreach (var file in Directory.GetFiles(resDir, "*.dll")) {
+                    try { File.Delete(file); } catch (Exception) {}
+                }
 
             Directory.CreateDirectory(resDir);
 
