@@ -132,9 +132,7 @@ namespace gdmake {
             var incpath = "";
             foreach (var inc in GDMake.GetIncludePath())
                 incpath += inc + "\n";
-            
-            incpath += Path.Join(GDMake.ExePath, "include").Replace("\\", "/");
-
+                
             str = str.Replace("<<GDMAKE_HEADERS>>", incpath);
 
             str = GDMake.FilterDefaultString(str, "<<?GDMAKE_DLLMAIN>>", this.Dotfile.EntryPoint == null);

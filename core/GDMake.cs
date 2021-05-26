@@ -309,6 +309,8 @@ namespace gdmake {
                 if (sub.IncludePaths != null)
                     foreach (var inc in sub.IncludePaths)
                         res.Add(inc);
+
+            res.Add(Path.Join(GDMake.ExePath, "include").Replace("\\", "/"));
             
             return res;
         }
