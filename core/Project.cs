@@ -93,10 +93,20 @@ namespace gdmake {
 
         private string GenerateHookHeader(Preprocessor pre) {
             var str = DefaultStrings.HeaderCredit + 
-            "\n#pragma once\n\n#include <GDMake.h>\n\nusing namespace gdmake;\n\n";
+            "\n#pragma once\n\n#include <GDMake.h>\n\n";
 
-            foreach (var hook in pre.Hooks)
-                str += $"inline {hook.GetTrampolineName()};\n{hook.GetFunctionSignature()};\n\n";
+            var includes = "";
+            var hooks = "";
+
+            foreach (var hook in pre.Hooks) {
+                foreach (var inc in hook.IncludesAndUsings)
+                    includes += inc + "\n";
+                
+                hooks += $"inline {hook.GetTrampolineName()};\n{hook.GetFunctionSignature()};\n\n";
+            }
+
+            str += includes + "\n\n";
+            str += hooks + "\n";
 
             return str;
         }

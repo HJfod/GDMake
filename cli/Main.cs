@@ -365,6 +365,26 @@ Commands (Use help <command> for extra information):"
                                     Console.WriteLine($"{name}{new String(' ', 25 - name.Length)}{sub.URL}");
                                 }
                             })},
+
+                            { "update", new ArgHandler(null, args => {
+                                if (!GDMake.IsGlobalInitialized()) {
+                                    GDMake.ShowGlobalNotInitializedError();
+                                    return;
+                                }
+
+                                if (args.Count < 1)
+                                    Console.WriteLine("Usage: submodules update <name>");
+                                else {
+                                    var sub = GDMake.GetSubmoduleByName(args[0]);
+
+                                    if (sub != null) {
+                                        GDMake.UpdateSubmodule(sub);
+
+                                        Console.WriteLine($"Updated {args[0]}!");
+                                    } else
+                                        Console.WriteLine($"Submodule {args[0]} does not exist!");
+                                }
+                            })},
                             
                             { "add", new ArgHandler(null, args => {
                                 if (!GDMake.IsGlobalInitialized()) {

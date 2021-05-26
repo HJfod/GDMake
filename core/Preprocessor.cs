@@ -4,16 +4,21 @@ using System.Text;
 using System.Linq;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using utils;
 
 namespace gdmake {
+    using FindItem = Tuple<string, bool, Func<string, string>>;
+
     public class Preprocessor {
         public class Replacement {
             public string MacroName { get; set; }
             public string Value { get; set; }
         }
 
-        public abstract class MacroFuncRes {}
+        public abstract class MacroFuncRes {
+            public int StringOffset = 0;
+        }
 
         public class Macro {
             public string Text { get; internal set; }
@@ -72,7 +77,7 @@ namespace gdmake {
             public string CallingConvention { get; internal set; }
             public string Args { get; internal set; }
             public string RawSignature { get; internal set; }
-            public List<string> Includes { get; internal set; } = new List<string>();
+            public HashSet<string> IncludesAndUsings { get; internal set; } = new HashSet<string>();
 
             public string GetTrampolineName() {
                 return $"{this.ReturnType} ({this.CallingConvention}* {this.FuncName}{TrampolineExt})({this.Args})";
@@ -136,7 +141,10 @@ namespace gdmake {
                         this.Args = funcParams;
 
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG_S", $"{this.FuncName}{TrampolineExt}");
+                        this.HookData = this.HookData.Replace("GDMAKE_ORIG_V", $"{this.FuncName}{TrampolineExt}");
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG", $"{this.FuncName}{TrampolineExt}");
+
+                        this.StringOffset = this.HookData.Length - rawData.Length;
                     } catch (Exception e) {
                         Console.WriteLine($"Unable to create hook: {e}");
                     }
@@ -177,6 +185,11 @@ namespace gdmake {
                 null
             ),
             new Macro(
+                "GDMAKE_ORIG_V", new string[] { "..." }, "",
+                "Call the original function from a hook created with GDMAKE_HOOK.",
+                null
+            ),
+            new Macro(
                 "GDMAKE_ORIG_S", new string[] { "..." }, "\"\"",
                 "Call the original function from a hook created with GDMAKE_HOOK.",
                 null
@@ -187,92 +200,98 @@ namespace gdmake {
 
         public void GetMacrosAndReplace(string file) {
             var oText = File.ReadAllText(file);
-            // var includes = new List<string>();
+            var includesAndUsings = new HashSet<string>();
             var extraIncludes = "";
 
             try {
-            var iText = oText;
+                foreach (var find in new FindItem[] {
+                    new FindItem ( @"using.*?;", true, s => s ),
+                    new FindItem ( @"#include [""<].*[>""]", false, s => {
+                        if (s.Contains('"')) {
+                            s = s.Substring(s.IndexOf('"') + 1);
 
-            // while (iText.Contains("#include")) {
-            //     var ix = iText.IndexOf("#include");
+                            return $"#include \"src/{s}";
+                        } else
+                            return s;
+                    } ),
+                    new FindItem ( @"class \w*", true, s => s + ";" ),
+                    new FindItem ( @"struct \w*", true, s => s + ";" ),
+                }) {
+                    var options = RegexOptions.Compiled;
 
-            //     iText = iText.Substring(ix + "#include".Length).TrimStart();
+                    if (find.Item2)
+                        options |= RegexOptions.Singleline;
+                    
+                    var rgx = new Regex (find.Item1, options);
 
-            //     var next = iText.IndexOf('>') + 1;
-            //     if (iText[0] == '"')
-            //         next = iText.IndexOf('"', 1) + 1;
-                
-            //     includes.Add(iText.Substring(0, next));
-            // }
+                    foreach (var match in rgx.Matches(oText))
+                        includesAndUsings.Add(find.Item3((match as Match).Value));
+                }
 
-            foreach (var macro in Macros)
-                if (macro.Replace != null) {
-                    var index = 0;
+                foreach (var macro in Macros)
+                    if (macro.Replace != null) {
+                        int ReplaceForSubstring(int sx, int ex) {
+                            var res = macro.Replace(oText.Substring(sx, ex));
 
-                    void ReplaceForSubstring(int sx, int ex) {
-                        var res = macro.Replace(oText.Substring(sx, ex));
+                            if (res is Hook) {
+                                if ((res as Hook).Address == 0) {
+                                    Console.WriteLine($"^^ Note: in {Path.GetFileName(file)}");
+                                    return res.StringOffset;
+                                }
 
-                        if (res is Hook) {
-                            if ((res as Hook).Address == 0) {
-                                Console.WriteLine($"^^ Note: in {Path.GetFileName(file)}");
-                                return;
+                                this.Hooks.Add(res as Hook);
+
+                                (res as Hook).IncludesAndUsings = includesAndUsings;
+
+                                if (!extraIncludes.Contains("#include <hooks.h>"))
+                                    extraIncludes += "#include <hooks.h>\n";
+
+                                var aStringBuilder = new StringBuilder(oText);
+                                aStringBuilder.Remove(sx, ex);
+                                aStringBuilder.Insert(sx, (res as Hook).HookData);
+                                oText = aStringBuilder.ToString();
                             }
 
-                            this.Hooks.Add(res as Hook);
+                            return res.StringOffset;
+                        };
+                        
+                        while (oText.Contains(macro.Text)) {
+                            switch (macro.ReplaceType) {
+                                case Macro.EReplaceType.Inside: {
+                                    var startIndex = oText.IndexOf(macro.Text) + macro.Text.Length;
+                                    startIndex = oText.IndexOf('(', startIndex) + 1;
 
-                            if (!extraIncludes.Contains("#include <hooks.h>"))
-                                extraIncludes += "#include <hooks.h>\n";
-
-                            var aStringBuilder = new StringBuilder(oText);
-                            aStringBuilder.Remove(sx, ex);
-                            aStringBuilder.Insert(sx, (res as Hook).HookData);
-                            oText = aStringBuilder.ToString();
-                        }
-                    };
-                    
-                    while (index < oText.Length && oText.IndexOf(macro.Text, index) != -1) {
-                        switch (macro.ReplaceType) {
-                            case Macro.EReplaceType.Inside: {
-                                var startIndex = oText.IndexOf(macro.Text) + macro.Text.Length;
-                                startIndex = oText.IndexOf('(', startIndex) + 1;
-
-                                int endIndex = startIndex;
-                                int paren = 1;
-                                while (paren > 0)
-                                    if (oText.Length < ++endIndex)
-                                        switch (oText[endIndex]) {
-                                            case '(': paren++; break;
-                                            case ')': paren--; break;
-                                        }
-                                    else break;
+                                    int endIndex = startIndex;
+                                    int paren = 1;
+                                    while (paren > 0)
+                                        if (oText.Length < ++endIndex)
+                                            switch (oText[endIndex]) {
+                                                case '(': paren++; break;
+                                                case ')': paren--; break;
+                                            }
+                                        else break;
+                                    
+                                    ReplaceForSubstring(startIndex, endIndex + 1);
+                                } break;
                                 
-                                ReplaceForSubstring(startIndex, endIndex + 1);
+                                case Macro.EReplaceType.NextFunction: {
+                                    var startIndex = oText.IndexOf(macro.Text);
 
-                                index += startIndex;
-                            } break;
-                            
-                            case Macro.EReplaceType.NextFunction: {
-                                var startIndex = oText.IndexOf(macro.Text, index);
-                                var six = startIndex + macro.Text.Length;
-                                six = oText.IndexOf('(', six);
+                                    int endIndex = oText.IndexOf('{', startIndex) + 1;
+                                    int paren = 1;
+                                    while (paren > 0)
+                                        if (oText.Length > ++endIndex)
+                                            switch (oText[endIndex]) {
+                                                case '{': paren++; break;
+                                                case '}': paren--; break;
+                                            }
+                                        else break;
 
-                                int endIndex = oText.IndexOf('{', six) + 1;
-                                int paren = 1;
-                                while (paren > 0)
-                                    if (oText.Length > ++endIndex)
-                                        switch (oText[endIndex]) {
-                                            case '{': paren++; break;
-                                            case '}': paren--; break;
-                                        }
-                                    else break;
-
-                                index += six;
-
-                                ReplaceForSubstring(startIndex, endIndex - startIndex + 1);
-                            } break;
+                                    ReplaceForSubstring(startIndex, endIndex - startIndex + 1);
+                                } break;
+                            }
                         }
                     }
-                }
             } catch (Exception e) {
                 Console.WriteLine($"Unable to process GDMake macros in {file}: {e}");
             }

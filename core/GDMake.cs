@@ -394,6 +394,21 @@ namespace gdmake {
             CheckSubmodules();
         }
 
+        public static void UpdateSubmodule(Submodule sub) {
+            Console.WriteLine($"Updating {sub.Name}...");
+
+            string logMessage = "";
+            using (var repo = new LibGit2Sharp.Repository(Path.Join(ExePath, "submodules", sub.Name)))
+            {
+                LibGit2Sharp.Commands.Pull(repo, new LibGit2Sharp.Signature(
+                    new LibGit2Sharp.Identity(
+                        "hi", "hello@yo"
+                    ), DateTimeOffset.Now
+                ), new LibGit2Sharp.PullOptions());
+            }
+            Console.WriteLine(logMessage);
+        }
+
         public static Result RemoveSubmodule(string name) {
             CheckSubmodules();
 
