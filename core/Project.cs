@@ -100,7 +100,8 @@ namespace gdmake {
 
             foreach (var hook in pre.Hooks) {
                 foreach (var inc in hook.IncludesAndUsings)
-                    includes += inc + "\n";
+                    if (!includes.Contains(inc))
+                        includes += inc + "\n";
 
                 hooks += $"inline {hook.GetTrampolineName()};\n{hook.GetFunctionSignature()};\n\n";
             }
