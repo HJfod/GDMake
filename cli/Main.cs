@@ -395,19 +395,51 @@ Commands (Use help <command> for extra information):"
                                 if (args.Count < 2)
                                     Console.WriteLine("Usage: submodules add <name> <url>");
                                 else {
+                                    var stype = GDMake.Submodule.TSubmoduleType.stCompiledLib;
+
+                                    if (ap.HasFlag("header-only")) stype = GDMake.Submodule.TSubmoduleType.stHeaderOnly;
+                                    if (ap.HasFlag("inc-src")) stype = GDMake.Submodule.TSubmoduleType.stIncludeSource;
+
                                     var sub = new GDMake.Submodule(
                                         args[0],
                                         args[1],
-                                        !ap.HasFlag("header-only"),
+                                        stype,
                                         ap.GetFlagValue("cmake")
                                     );
 
                                     GDMake.AddSubmodule(sub);
 
-                                    if (!ap.HasFlag("header-only"))
+                                    if (stype == GDMake.Submodule.TSubmoduleType.stCompiledLib)
                                         GDMake.CompileLibs();
                                     
                                     Console.WriteLine("Added submodule!");
+                                }
+                            })},
+
+                            { "info", new ArgHandler(null, args => {
+                                if (!GDMake.IsGlobalInitialized()) {
+                                    GDMake.ShowGlobalNotInitializedError();
+                                    return;
+                                }
+
+                                if (args.Count < 1)
+                                    Console.WriteLine("Usage: submodules info <name>");
+                                else {
+                                    var sub = GDMake.GetSubmoduleByName(args[0]);
+
+                                    if (sub == null)
+                                        Console.WriteLine($"Submodule {args[0]} does not exist!");
+                                    else
+                                        Console.WriteLine(
+                $"Information for {sub.Name}\n\n" +
+                $"Repo URL: {sub.URL}\n" +
+                $"Header Name: {sub.IncludeHeader}\n" +
+                $"Type: {sub.Type.ToString()}\n" +
+                $"CMake Options: {((sub.CMakeDefs?.Length ?? 0 ) > 0 ? sub.CMakeDefs : "<none>")}\n" +
+                $"Library Paths: \n\t{String.Join("\n\t", sub.LibPaths ?? new string[] { "<none>" })}\n" +
+                $"Include Paths: \n\t{String.Join("\n\t", sub.IncludePaths ?? new HashSet<string> { "<none>" })}\n" +
+                $"Source Paths: \n\t{String.Join("\n\t", ((sub.SourcePaths?.Count ?? 0) > 0 ? sub.SourcePaths : new HashSet<string> { "<none>" }))}\n"
+                                        );
                                 }
                             })},
 

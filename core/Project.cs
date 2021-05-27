@@ -145,6 +145,13 @@ namespace gdmake {
                 
             str = str.Replace("<<GDMAKE_HEADERS>>", incpath);
 
+            var srcpath = "";
+            foreach (var sub in GDMake.Submodules)
+                foreach (var src in sub.SourcePaths)
+                    srcpath += src + "\n";
+            
+            str = str.Replace("<<GDMAKE_SOURCES>>", srcpath);
+
             str = GDMake.FilterDefaultString(str, "<<?GDMAKE_DLLMAIN>>", this.Dotfile.EntryPoint == null);
 
             return str;

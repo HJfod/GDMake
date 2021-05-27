@@ -11,26 +11,33 @@ using utils;
 namespace gdmake {
     public static class GDMake {
         public class Submodule {
+            public enum TSubmoduleType {
+                stCompiledLib,
+                stHeaderOnly,
+                stIncludeSource
+            }
+
             public string Name { get; set; }
             public string URL { get; set; }
             public string IncludeHeader { get; set; }
-            public bool CompileLib { get; set; }
+            public TSubmoduleType Type { get; set; }
             public string CMakeDefs { get; set; }
             public string[] LibPaths { get; set; } = null; 
             public HashSet<string> IncludePaths { get; set; } = new HashSet<string>();
+            public HashSet<string> SourcePaths { get; set; } = new HashSet<string>();
 
             public Submodule() {
                 this.Name = "none";
                 this.URL = "";
                 this.IncludeHeader = "none";
-                this.CompileLib = false;
+                this.Type = TSubmoduleType.stIncludeSource;
                 this.CMakeDefs = null;
             }
 
             public Submodule(
                 string name,
                 string url,
-                bool lib = true,
+                TSubmoduleType type = TSubmoduleType.stIncludeSource,
                 string defs = "",
                 string[] lpath = null,
                 HashSet<string> ipath = null
@@ -39,7 +46,7 @@ namespace gdmake {
                 this.URL = url;
                 this.IncludeHeader = Name;
                 this.CMakeDefs = defs;
-                this.CompileLib = lib;
+                this.Type = type;
                 this.LibPaths = lpath;
                 if (ipath != null)
                     this.IncludePaths = ipath;
@@ -49,10 +56,25 @@ namespace gdmake {
         public const string DotfileName = ".gdmake";
         public static string ExePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location).Replace("\\", "/");
         public static Submodule[] DefaultSubmodules = new Submodule[] {
-            new Submodule ( "gd.h", "https://github.com/HJfod/gd.h", false ),
-            new Submodule ( "MinHook", "https://github.com/TsudaKageyu/MinHook", true, "-DBUILD_SHARED_LIBS=ON",
-                new string[] { "libs/minhook.x32.lib" } ),
-            new Submodule ( "Cocos2d", "https://github.com/HJfod/cocos-headers", false, null,
+            new Submodule (
+                "gd.h",
+                "https://github.com/HJfod/gd.h",
+                Submodule.TSubmoduleType.stHeaderOnly
+            ),
+
+            new Submodule (
+                "MinHook",
+                "https://github.com/TsudaKageyu/MinHook",
+                Submodule.TSubmoduleType.stCompiledLib,
+                "-DBUILD_SHARED_LIBS=ON",
+                new string[] { "libs/minhook.x32.lib" }
+            ),
+
+            new Submodule (
+                "Cocos2d",
+                "https://github.com/HJfod/cocos-headers",
+                Submodule.TSubmoduleType.stHeaderOnly,
+                null,
                 new string[] {
                     "submodules/Cocos2d/cocos2dx/libcocos2d.lib",
                     "submodules/Cocos2d/extensions/libExtensions.lib",
@@ -64,7 +86,8 @@ namespace gdmake {
                     $"{ExePath}/submodules/Cocos2d/cocos2dx/platform/third_party/win32/OGLES",
                     $"{ExePath}/submodules/Cocos2d/cocos2dx/platform/win32",
                     $"{ExePath}/submodules/Cocos2d/extensions",
-                } ),
+                }
+            ),
         };
         public static HashSet<Submodule> Submodules = new HashSet<Submodule>();
         public static SettingsFile SettingsFile = null;
@@ -253,7 +276,7 @@ namespace gdmake {
             Directory.CreateDirectory(Path.Join(ExePath, "dlls"));
 
             foreach (var sub in Submodules)
-                if (sub.CompileLib) {
+                if (sub.Type == Submodule.TSubmoduleType.stCompiledLib) {
                     Console.WriteLine($"Building {sub.Name}...");
 
                     RunBuildBat(Path.Join(ExePath, "submodules", sub.Name), sub.Name, "Release", sub.CMakeDefs, true);
@@ -384,6 +407,13 @@ namespace gdmake {
                 Path.Join(GDMake.ExePath, "submodules", sub.Name), "include", SearchOption.TopDirectoryOnly)
             )
                 sub.IncludePaths.Add(Path.GetFullPath(subi).Replace("\\", "/"));
+
+            foreach (var subi in Directory.GetDirectories(
+                Path.Join(GDMake.ExePath, "submodules", sub.Name), "src", SearchOption.TopDirectoryOnly)
+            ) {
+                sub.SourcePaths.Add(Path.Join(Path.GetFullPath(subi), "*.cpp").Replace("\\", "/"));
+                sub.SourcePaths.Add(Path.Join(Path.GetFullPath(subi), "*.c").Replace("\\", "/"));
+            }
 
             GenerateIncludeFiles();
 

@@ -179,6 +179,7 @@ file(GLOB_RECURSE SOURCES
     <<?GDMAKE_DLLMAIN>>mod.cpp
     <<GDMAKE_DIR>>/src/console.cpp
     src/*.cpp
+    <<GDMAKE_SOURCES>>
 )
 
 set(WIN32 ON)
