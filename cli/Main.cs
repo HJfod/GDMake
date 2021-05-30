@@ -481,14 +481,14 @@ Commands (Use help <command> for extra information):"
                                     }
                             })},
 
-                            { "add-path", new ArgHandler(null, args => {
+                            { "add-inc", new ArgHandler(null, args => {
                                 if (!GDMake.IsGlobalInitialized()) {
                                     GDMake.ShowGlobalNotInitializedError();
                                     return;
                                 }
 
                                 if (args.Count < 2)
-                                    Console.WriteLine("Usage: submodules add-path <submodule> <path>");
+                                    Console.WriteLine("Usage: submodules add-inc <submodule> <path>");
                                 else
                                     if (!Directory.Exists(Path.Join(GDMake.ExePath, "submodules", args[0], args[1])))
                                         Console.WriteLine($"Directory submodules/{args[0]}/{args[1]} does not exist!");
@@ -499,6 +499,32 @@ Commands (Use help <command> for extra information):"
                                             Console.WriteLine($"Submodule {sub} does not exist!");
                                         else {
                                             sub.IncludePaths.Add(
+                                                Path.Join(GDMake.ExePath, "submodules", args[0], args[1]).Replace("\\", "/")
+                                            );
+
+                                            GDMake.SaveSettings();
+                                        }
+                                    }
+                            })},
+
+                            { "add-src", new ArgHandler(null, args => {
+                                if (!GDMake.IsGlobalInitialized()) {
+                                    GDMake.ShowGlobalNotInitializedError();
+                                    return;
+                                }
+
+                                if (args.Count < 2)
+                                    Console.WriteLine("Usage: submodules add-src <submodule> <path>");
+                                else
+                                    if (!Directory.Exists(Path.Join(GDMake.ExePath, "submodules", args[0], args[1])))
+                                        Console.WriteLine($"Directory submodules/{args[0]}/{args[1]} does not exist!");
+                                    else {
+                                        var sub = GDMake.GetSubmoduleByName(args[0]);
+
+                                        if (sub == null)
+                                            Console.WriteLine($"Submodule {sub} does not exist!");
+                                        else {
+                                            sub.SourcePaths.Add(
                                                 Path.Join(GDMake.ExePath, "submodules", args[0], args[1]).Replace("\\", "/")
                                             );
 
