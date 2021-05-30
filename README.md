@@ -18,6 +18,7 @@ GDMake is a tool meant for simplifying and speeding up the development of Geomet
 
 Basic usage:
 
+ * `gdmake setup` for setting up GDMake
  * `gdmake init` for setting up a project
  * `gdmake .` for compiling & running
 
