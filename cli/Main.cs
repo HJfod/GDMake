@@ -407,6 +407,9 @@ Commands (Use help <command> for extra information):"
                                         ap.GetFlagValue("cmake")
                                     );
 
+                                    if (ap.HasFlag("no-header"))
+                                        sub.IncludeHeader = null;
+
                                     GDMake.AddSubmodule(sub);
 
                                     if (stype == GDMake.Submodule.TSubmoduleType.stCompiledLib)
@@ -515,8 +518,16 @@ Commands (Use help <command> for extra information):"
 
                                 if (args.Count < 2)
                                     Console.WriteLine("Usage: submodules add-src <submodule> <path>");
-                                else
-                                    if (!Directory.Exists(Path.Join(GDMake.ExePath, "submodules", args[0], args[1])))
+                                else {
+                                    var path = Path.Join(GDMake.ExePath, "submodules", args[0], args[1]);
+
+                                    string arx = "";
+                                    if (path.Contains('*')) {
+                                        arx = path.Substring(path.IndexOf('*'));
+                                        path = path.Substring(0, path.IndexOf('*'));
+                                    }
+
+                                    if (!Directory.Exists(path))
                                         Console.WriteLine($"Directory submodules/{args[0]}/{args[1]} does not exist!");
                                     else {
                                         var sub = GDMake.GetSubmoduleByName(args[0]);
@@ -525,12 +536,13 @@ Commands (Use help <command> for extra information):"
                                             Console.WriteLine($"Submodule {sub} does not exist!");
                                         else {
                                             sub.SourcePaths.Add(
-                                                Path.Join(GDMake.ExePath, "submodules", args[0], args[1]).Replace("\\", "/")
+                                                path.Replace("\\", "/") + arx
                                             );
 
                                             GDMake.SaveSettings();
                                         }
                                     }
+                                }
                             })},
                         }, args => {
                             ShowHelpForCommand("submodules");

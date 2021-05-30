@@ -126,7 +126,8 @@ namespace gdmake {
                 "#pragma warning(push, 0)\n";
 
             foreach (var sub in Submodules)
-                includeText += $"#include <{(sub.IncludeHeader.EndsWith(".h") ? sub.IncludeHeader : sub.IncludeHeader + ".h")}>\n";
+                if (sub.IncludeHeader != null)
+                    includeText += $"#include <{(sub.IncludeHeader.EndsWith(".h") ? sub.IncludeHeader : sub.IncludeHeader + ".h")}>\n";
 
             includeText += "#pragma warning(pop)\n\n";
             includeText += "#include \"GDMakeMacros.h\"\n";
