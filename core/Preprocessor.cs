@@ -11,6 +11,8 @@ namespace gdmake {
     using FindItem = Tuple<string, bool, Func<string, string>>;
 
     public class Preprocessor {
+        private string BasePath { get; set; }
+
         public class Replacement {
             public string MacroName { get; set; }
             public string Value { get; set; }
@@ -210,7 +212,7 @@ namespace gdmake {
                         if (s.Contains('"')) {
                             s = s.Substring(s.IndexOf('"') + 1);
 
-                            return $"#include \"src/{s}";
+                            return $"#include \"{Path.Join(Path.GetDirectoryName(file), s).Replace("\\", "/")}";
                         } else
                             return s;
                     } ),
@@ -303,6 +305,8 @@ namespace gdmake {
 
         public static Preprocessor PreprocessAllFilesInFolder(string path) {
             var pre = new Preprocessor();
+
+            pre.BasePath = path;
 
             foreach (var file in Directory
                 .EnumerateFiles(path, "*.*", SearchOption.AllDirectories)
