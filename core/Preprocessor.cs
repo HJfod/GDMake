@@ -143,6 +143,7 @@ namespace gdmake {
                         this.Args = funcParams;
 
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG_S", $"{this.FuncName}{TrampolineExt}");
+                        this.HookData = this.HookData.Replace("GDMAKE_ORIG_P", $"{this.FuncName}{TrampolineExt}");
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG_V", $"{this.FuncName}{TrampolineExt}");
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG", $"{this.FuncName}{TrampolineExt}");
 
@@ -217,6 +218,11 @@ namespace gdmake {
             ),
             new Macro(
                 "GDMAKE_ORIG_S", new string[] { "..." }, "\"\"",
+                "Call the original function from a hook created with GDMAKE_HOOK.",
+                null
+            ),
+            new Macro(
+                "GDMAKE_ORIG_P", new string[] { "..." }, "nullptr",
                 "Call the original function from a hook created with GDMAKE_HOOK.",
                 null
             ),
