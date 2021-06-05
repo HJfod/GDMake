@@ -146,6 +146,8 @@ namespace gdmake {
                     $"{(macro.Parameters != null ? "(" + String.Join(",", macro.Parameters) + ")" : "")}" + 
                     $" {macro.CppReplace}\n\n";
             
+            includeMacros += DefaultStrings.ExtraCCMacros;
+            
             includeMacros += "#endif";
 
             File.WriteAllText(Path.Join(ExePath, "include/GDMakeMacros.h"), includeMacros);
