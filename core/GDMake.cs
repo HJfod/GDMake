@@ -155,7 +155,7 @@ namespace gdmake {
 
         private static void GenerateSourceFiles() {
             File.WriteAllText(Path.Join(ExePath, "src/console.h"), DefaultStrings.ConsoleHeader);
-            File.WriteAllText(Path.Join(ExePath, "src/console.cpp"), DefaultStrings.ConsoleSource);
+            // File.WriteAllText(Path.Join(ExePath, "src/console.cpp"), DefaultStrings.ConsoleSource);
         }
 
         private static void GenerateTools() {

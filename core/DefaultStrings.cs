@@ -129,11 +129,13 @@ namespace gdmake {
         public const string ConsoleSource =
 DefaultStrings.HeaderCredit +
 @"
-#include ""console.h""
+#include ""<<GDMAKE_DIR>>/src/console.h""
 #include <Windows.h>
 #include <stdio.h>
 #include <iostream>
 #include <string>
+#include <sstream>
+#include ""debug.h""
 
 bool gdmake::console::load() {
     if (AllocConsole() == 0)
@@ -158,6 +160,15 @@ void gdmake::console::awaitUnload() {
     std::string inp;
     getline(std::cin, inp);
 
+    std::string inpa;
+    std::stringstream ss(inp);
+    std::vector<std::string> args;
+    while (ss >> inpa)
+        args.push_back(inpa);
+    ss.clear();
+
+    <<GDMAKE_DEBUGS>>
+
     if (inp != ""e"")
         awaitUnload();
 }
@@ -177,7 +188,7 @@ project(${PROJECT_NAME} VERSION 1.0.0)
 file(GLOB_RECURSE SOURCES 
     <<?GDMAKE_DLLMAIN>>dllmain.cpp
     <<?GDMAKE_DLLMAIN>>mod.cpp
-    <<GDMAKE_DIR>>/src/console.cpp
+    <<?GDMAKE_CONSOLE>>console.cpp
     src/*.cpp
     <<GDMAKE_SOURCES>>
 )

@@ -29,7 +29,7 @@ namespace gdmake {
             public bool IsReplace { get; internal set; }
             public string Description { get; internal set; }
             public Func<string, MacroFuncRes> Replace { get; internal set; }
-            public enum EReplaceType { Inside, NextFunction }
+            public enum EReplaceType { Inside, NextFunction, NoReplace }
             public EReplaceType ReplaceType;
 
             public string GetFormattedDesc() {
@@ -154,6 +154,30 @@ namespace gdmake {
             }
         }
 
+        public class DebugMsg : MacroFuncRes {
+            public string Command { get; internal set; }
+            public string DbgData { get; internal set; }
+
+            public DebugMsg(string rawData) {
+                var data = rawData.Substring("GDMAKE_DEBUG".Length);
+                data = data.Substring(data.IndexOf('(') + 1);
+
+                this.Command = data.Substring(0, data.IndexOf(')'));
+                data = data.Substring(data.IndexOf(')') + 1);
+
+                string argsName = "";
+                if (this.Command.Contains(',')) {
+                    argsName = this.Command.Substring(this.Command.IndexOf(',') + 1);
+
+                    this.Command = this.Command.Substring(0, this.Command.IndexOf(','));
+                }
+
+                this.DbgData = $"void dbg_{this.Command}(std::vector<std::string> {argsName}){data}";
+
+                this.StringOffset = rawData.Length;
+            }
+        }
+
         public static readonly Macro[] Macros = new Macro[] {
             new Macro(
                 "GDMAKE_MAIN", null, "bool mod::loadMod(HMODULE)",
@@ -196,9 +220,26 @@ namespace gdmake {
                 "Call the original function from a hook created with GDMAKE_HOOK.",
                 null
             ),
+            new Macro(
+                "GDMAKE_INT_CONCAT10", new string[] { "str0", "str1", "str2", "str3", "str4", "str5", "str6", "str7", "str8", "str9" },
+                "str0##str1##str2##str3##str4##str5##str6##str7##str8##str9",
+                "Internal GDMake macro for concatenating 10 strings (note: __VA_ARGS__ just doesn't work)",
+                null
+            ),
+            new Macro(
+                "GDMAKE_INT_CONCAT2", new string[] { "str0", "str1" }, "str0##str1",
+                "Internal GDMake macro for concatenating two strings",
+                null
+            ),
+            new Macro(
+                "GDMAKE_DEBUG", new string[] { "command", "argvar" }, "void GDMAKE_INT_CONCAT2(dbg_, command)(std::vector<std::string> argvar)",
+                "Add a custom debug input to the console",
+                s => new DebugMsg(s), Macro.EReplaceType.NoReplace
+            ),
         };
 
         public List<Hook> Hooks = new List<Hook>();
+        public List<DebugMsg> DebugMsgs = new List<DebugMsg>();
 
         public void GetMacrosAndReplace(string file) {
             var oText = File.ReadAllText(file);
@@ -230,6 +271,8 @@ namespace gdmake {
                         includesAndUsings.Add(find.Item3((match as Match).Value));
                 }
 
+                int offset = 0;
+
                 foreach (var macro in Macros)
                     if (macro.Replace != null) {
                         int ReplaceForSubstring(int sx, int ex) {
@@ -251,6 +294,18 @@ namespace gdmake {
                                 var aStringBuilder = new StringBuilder(oText);
                                 aStringBuilder.Remove(sx, ex);
                                 aStringBuilder.Insert(sx, (res as Hook).HookData);
+                                oText = aStringBuilder.ToString();
+                            }
+
+                            if (res is DebugMsg) {
+                                this.DebugMsgs.Add(res as DebugMsg);
+
+                                if (!extraIncludes.Contains("#include <debug.h>"))
+                                    extraIncludes += "#include <debug.h>\n";
+
+                                var aStringBuilder = new StringBuilder(oText);
+                                aStringBuilder.Remove(sx, ex);
+                                aStringBuilder.Insert(sx, (res as DebugMsg).DbgData);
                                 oText = aStringBuilder.ToString();
                             }
 
@@ -277,6 +332,22 @@ namespace gdmake {
                                 } break;
                                 
                                 case Macro.EReplaceType.NextFunction: {
+                                    var startIndex = oText.IndexOf(macro.Text);
+
+                                    int endIndex = oText.IndexOf('{', startIndex) + 1;
+                                    int paren = 1;
+                                    while (paren > 0)
+                                        if (oText.Length > ++endIndex)
+                                            switch (oText[endIndex]) {
+                                                case '{': paren++; break;
+                                                case '}': paren--; break;
+                                            }
+                                        else break;
+
+                                    ReplaceForSubstring(startIndex, endIndex - startIndex + 1);
+                                } break;
+
+                                case Macro.EReplaceType.NoReplace: {
                                     var startIndex = oText.IndexOf(macro.Text);
 
                                     int endIndex = oText.IndexOf('{', startIndex) + 1;
