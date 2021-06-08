@@ -244,6 +244,33 @@ namespace gdmake {
             ),
         };
 
+        private static bool HasSubstringAndItsNotCommentedOut(string str, string sub) {
+            int inBlockComment = -1;
+            foreach (var line in str.Split('\n')) {
+                int offset = line.Length;
+                int s_offset = 0;
+
+                if (inBlockComment != -1) {
+                    s_offset = line.IndexOf("*/") + 1;
+
+                    if (s_offset > 0)
+                        inBlockComment = -1;
+                } else
+                    inBlockComment = line.IndexOf("/*");
+
+                if (inBlockComment != -1)
+                    offset = inBlockComment;
+                else
+                    if (line.Contains("//"))
+                        offset = line.IndexOf("//");
+
+                if (line.Substring(s_offset, offset - s_offset).Contains(sub))
+                    return true;
+            }
+
+            return false;
+        }
+
         public List<Hook> Hooks = new List<Hook>();
         public List<DebugMsg> DebugMsgs = new List<DebugMsg>();
 
@@ -318,7 +345,7 @@ namespace gdmake {
                             return res.StringOffset;
                         };
                         
-                        while (oText.Contains(macro.Text)) {
+                        while (HasSubstringAndItsNotCommentedOut(oText, macro.Text)) {
                             switch (macro.ReplaceType) {
                                 case Macro.EReplaceType.Inside: {
                                     var startIndex = oText.IndexOf(macro.Text) + macro.Text.Length;
