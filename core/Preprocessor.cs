@@ -304,8 +304,6 @@ namespace gdmake {
                         includesAndUsings.Add(find.Item3((match as Match).Value));
                 }
 
-                int offset = 0;
-
                 foreach (var macro in Macros)
                     if (macro.Replace != null) {
                         int ReplaceForSubstring(int sx, int ex) {

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Reflection;
 using System.Collections.Generic;
 using Microsoft.Win32;
+using Microsoft.Build.Execution;
 using utils;
 
 namespace gdmake {
@@ -189,6 +190,35 @@ namespace gdmake {
             process.Start();
             process.BeginOutputReadLine();
             process.WaitForExit();
+
+            // var project = new Microsoft.Build.Evaluation.Project(Path.Join(cd, "build", pName + ".sln"));
+
+            // project.SetProperty("Configuration", config);
+            // project.SetProperty("PlatformTarget", "x86");
+
+            // var res = BuildManager.DefaultBuildManager.Build(
+            //     new BuildParameters {
+            //         DetailedSummary = false,
+            //         EnableNodeReuse = false,
+            //         MaxNodeCount = System.Environment.ProcessorCount,
+            //         OnlyLogCriticalEvents = false,
+            //         ShutdownInProcNodeOnBuildFinish = true,
+            //     },
+            //     new BuildRequestData (
+            //         project.CreateProjectInstance(),
+            //         project.Targets.Select(t => t.Key).ToArray()
+            //     )
+            // );
+
+            // if (res.OverallResult == BuildResultCode.Success) {
+            //     Console.WriteLine("Build succesful!");
+                
+            //     return true;
+            // }
+
+            // Console.WriteLine(res.Exception.ToString());
+
+            // return false;
         }
 
         public static Result<string> GetGDPath(bool figureOut = false) {

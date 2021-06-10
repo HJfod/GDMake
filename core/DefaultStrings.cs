@@ -181,6 +181,18 @@ cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# shut the fuck up cmake
+function(message)
+  list(GET ARGV 0 MessageType)
+  if(MessageType STREQUAL FATAL_ERROR OR
+     MessageType STREQUAL SEND_ERROR OR
+     MessageType STREQUAL WARNING OR
+     MessageType STREQUAL AUTHOR_WARNING)
+    list(REMOVE_AT ARGV 0)
+    _message(${MessageType} ""${ARGV}"")
+  endif()
+endfunction()
+
 set(PROJECT_NAME <<MOD_NAME>>)
 
 project(${PROJECT_NAME} VERSION 1.0.0)
@@ -212,9 +224,9 @@ target_link_libraries(
 
         public const string BuildBat =
 @"
-rem GDMake build.bat
-
 @echo off
+
+rem GDMake build.bat
 
 cd ""%1""
 
