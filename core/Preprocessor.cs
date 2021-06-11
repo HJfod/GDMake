@@ -281,7 +281,7 @@ namespace gdmake {
 
             try {
                 foreach (var find in new FindItem[] {
-                    new FindItem ( @"using.*?;", true, s => s ),
+                    new FindItem ( @"using.*?;", true, s => s.Contains('"') ? "" : s ),
                     new FindItem ( @"#include [""<].*[>""]", false, s => {
                         if (s.Contains('"')) {
                             s = s.Substring(s.IndexOf('"') + 1);
