@@ -264,6 +264,9 @@ namespace gdmake {
                     if (line.Contains("//"))
                         offset = line.IndexOf("//");
 
+                if (offset - s_offset <= 0)
+                    return false;
+
                 if (line.Substring(s_offset, offset - s_offset).Contains(sub))
                     return true;
             }
