@@ -209,7 +209,7 @@ namespace gdmake {
             CopyFolderRecurse(this.Dir, dest, ignores);
         }
 
-        public Result Generate(bool empty = false) {
+        public Result Generate(bool empty = false, bool verbose = false) {
             Console.WriteLine("Generating...");
 
             var dir = GDMake.MakeBuildDirectory(this.Name, empty);
@@ -233,7 +233,7 @@ namespace gdmake {
 
             CopyAllSourceFiles(Path.Join(dir, "src"));
 
-            var pre = Preprocessor.PreprocessAllFilesInFolder(Path.Join(dir, "src"));
+            var pre = Preprocessor.PreprocessAllFilesInFolder(Path.Join(dir, "src"), verbose);
             
             try { File.WriteAllText(Path.Join(dir, "debug.h"), GenerateDebugHeader(pre)); }
             catch (Exception e) {

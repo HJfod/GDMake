@@ -12,6 +12,7 @@ namespace gdmake {
 
     public class Preprocessor {
         private string BasePath { get; set; }
+        private bool Verbose { get; set; }
 
         public class Replacement {
             public string MacroName { get; set; }
@@ -265,7 +266,7 @@ namespace gdmake {
                         offset = line.IndexOf("//");
 
                 if (offset - s_offset <= 0)
-                    return false;
+                    continue;
 
                 if (line.Substring(s_offset, offset - s_offset).Contains(sub))
                     return true;
@@ -281,6 +282,7 @@ namespace gdmake {
             var oText = File.ReadAllText(file);
             var includesAndUsings = new HashSet<string>();
             var extraIncludes = "";
+            var macroCount = 0;
 
             try {
                 foreach (var find in new FindItem[] {
@@ -310,6 +312,7 @@ namespace gdmake {
                 foreach (var macro in Macros)
                     if (macro.Replace != null) {
                         int ReplaceForSubstring(int sx, int ex) {
+                            macroCount++;
                             var res = macro.Replace(oText.Substring(sx, ex));
 
                             if (res is Hook) {
@@ -406,12 +409,16 @@ namespace gdmake {
             oText = extraIncludes + oText;
 
             File.WriteAllText(file, oText);
+
+            if (this.Verbose)
+                Console.WriteLine($"Processed {macroCount} macros in {Path.GetFileName(file)}");
         }
 
-        public static Preprocessor PreprocessAllFilesInFolder(string path) {
+        public static Preprocessor PreprocessAllFilesInFolder(string path, bool verbose = false) {
             var pre = new Preprocessor();
 
             pre.BasePath = path;
+            pre.Verbose = verbose;
 
             foreach (var file in Directory
                 .EnumerateFiles(path, "*.*", SearchOption.AllDirectories)
