@@ -245,8 +245,9 @@ namespace gdmake {
             ),
         };
 
-        private static bool HasSubstringAndItsNotCommentedOut(string str, string sub) {
+        private static int HasSubstringAndItsNotCommentedOut(string str, string sub) {
             int inBlockComment = -1;
+            int foffset = 0;
             foreach (var line in str.Split('\n')) {
                 int offset = line.Length;
                 int s_offset = 0;
@@ -265,14 +266,16 @@ namespace gdmake {
                     if (line.Contains("//"))
                         offset = line.IndexOf("//");
 
+                foffset += line.Length + 1;
+
                 if (offset - s_offset <= 0)
                     continue;
 
                 if (line.Substring(s_offset, offset - s_offset).Contains(sub))
-                    return true;
+                    return foffset - line.Length - 1 + line.Substring(s_offset, offset - s_offset).IndexOf(sub);
             }
 
-            return false;
+            return -1;
         }
 
         public List<Hook> Hooks = new List<Hook>();
@@ -349,10 +352,10 @@ namespace gdmake {
                             return res.StringOffset;
                         };
                         
-                        while (HasSubstringAndItsNotCommentedOut(oText, macro.Text)) {
+                        while (HasSubstringAndItsNotCommentedOut(oText, macro.Text) != -1) {
                             switch (macro.ReplaceType) {
                                 case Macro.EReplaceType.Inside: {
-                                    var startIndex = oText.IndexOf(macro.Text) + macro.Text.Length;
+                                    var startIndex = HasSubstringAndItsNotCommentedOut(oText, macro.Text) + macro.Text.Length;
                                     startIndex = oText.IndexOf('(', startIndex) + 1;
 
                                     int endIndex = startIndex;
@@ -369,7 +372,7 @@ namespace gdmake {
                                 } break;
                                 
                                 case Macro.EReplaceType.NextFunction: {
-                                    var startIndex = oText.IndexOf(macro.Text);
+                                    var startIndex = HasSubstringAndItsNotCommentedOut(oText, macro.Text);
 
                                     int endIndex = oText.IndexOf('{', startIndex) + 1;
                                     int paren = 1;
@@ -385,7 +388,7 @@ namespace gdmake {
                                 } break;
 
                                 case Macro.EReplaceType.NoReplace: {
-                                    var startIndex = oText.IndexOf(macro.Text);
+                                    var startIndex = HasSubstringAndItsNotCommentedOut(oText, macro.Text);
 
                                     int endIndex = oText.IndexOf('{', startIndex) + 1;
                                     int paren = 1;
