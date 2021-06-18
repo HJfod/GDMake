@@ -27,10 +27,12 @@ DWORD WINAPI load_thread(LPVOID hModule) {
             MessageBoxA(nullptr, ""Unable to set up hooks!"", ""<<MOD_NAME>>"", MB_ICONERROR);
             <<?CONSOLE>>gdmake::console::unload();
             FreeLibraryAndExitThread((HMODULE)hModule, 0);
+            return 0;
         }
     } else {
         MessageBoxA(nullptr, ""Unable to load!"", ""<<MOD_NAME>>"", MB_ICONERROR);
         FreeLibraryAndExitThread((HMODULE)hModule, 0);
+        return 0;
     }
 
     <<?CONSOLE>>mod::unload();
@@ -106,7 +108,7 @@ void mod::unload() {
 
     MH_DisableHook(MH_ALL_HOOKS);
 
-    MH_Uninitialize();
+    // MH_Uninitialize();
 }
 
 #endif
