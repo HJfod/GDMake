@@ -182,12 +182,12 @@ namespace gdmake {
 
         public static readonly Macro[] Macros = new Macro[] {
             new Macro(
-                "GDMAKE_MAIN", null, "bool mod::loadMod(HMODULE)",
+                "GDMAKE_MAIN", null, "bool mod::loadMod(HMODULE, GDLoader::Mod*)",
                 "Main entry point for the mod. All default variables should be initialized at this point. Only called if EntryPoint is null.",
                 null
             ),
             new Macro(
-                "GDMAKE_MAIN_HM", new string[] { "hModule" }, "bool mod::loadMod(HMODULE hModule)",
+                "GDMAKE_MAIN_HM", new string[] { "hModule, pMod" }, "bool mod::loadMod(HMODULE hModule, GDLoader::Mod* pMod)",
                 "Main entry point for the mod. All default variables should be initialized at this point. Only called if EntryPoint is null.",
                 null
             ),
@@ -197,8 +197,9 @@ namespace gdmake {
                 null
             ),
             new Macro(
-                "GDMAKE_CREATE_HOOK", new string[] { "addr", "detour", "orig" },
-                "if (MH_CreateHook((PVOID)(gd::base + addr), reinterpret_cast<LPVOID>(detour), reinterpret_cast<LPVOID*>(&orig)) != MH_OK) return false;",
+                "GDMAKE_CREATE_HOOK", new string[] { "pMod", "addr", "detour", "orig" },
+                // "if (MH_CreateHook((PVOID)(gd::base + addr), reinterpret_cast<LPVOID>(detour), reinterpret_cast<LPVOID*>(&orig)) != MH_OK) return false;",
+                "if (pMod->addHook(addr, detour, orig) != MH_OK) return false;",
                 "Alias macro for creating a hook at an address.",
                 null
             ),

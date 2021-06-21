@@ -41,11 +41,12 @@ namespace gdmake {
                 TSubmoduleType type = TSubmoduleType.stIncludeSource,
                 string defs = "",
                 string[] lpath = null,
-                HashSet<string> ipath = null
+                HashSet<string> ipath = null,
+                string ihead = null
             ) {
                 this.Name = name;
                 this.URL = url;
-                this.IncludeHeader = Name;
+                this.IncludeHeader = ihead ?? Name + ".h";
                 this.CMakeDefs = defs;
                 this.Type = type;
                 this.LibPaths = lpath;
@@ -64,11 +65,16 @@ namespace gdmake {
             ),
 
             new Submodule (
-                "MinHook",
-                "https://github.com/TsudaKageyu/MinHook",
+                "gd-loader",
+                "https://github.com/matcool/GDLoader",
                 Submodule.TSubmoduleType.stCompiledLib,
-                "-DBUILD_SHARED_LIBS=ON",
-                new string[] { "libs/minhook.x32.lib" }
+                null,
+                new string[] { "libs/gd-loader.lib" },
+                new HashSet<string> {
+                    $"{ExePath}/submodules/gd-loader/src",
+                    $"{ExePath}/submodules/gd-loader/libraries/minhook/include"
+                },
+                "GDLoader.hpp"
             ),
 
             new Submodule (
@@ -128,7 +134,7 @@ namespace gdmake {
 
             foreach (var sub in Submodules)
                 if (sub.IncludeHeader != null)
-                    includeText += $"#include <{(sub.IncludeHeader.EndsWith(".h") ? sub.IncludeHeader : sub.IncludeHeader + ".h")}>\n";
+                    includeText += $"#include <{sub.IncludeHeader}>\n";
 
             includeText += "#pragma warning(pop)\n\n";
             includeText += "#include \"GDMakeMacros.h\"\n";
@@ -180,6 +186,7 @@ namespace gdmake {
             var process = new Process();
 
             if (String.IsNullOrWhiteSpace(cMakeOpts)) cMakeOpts = null;
+            if (silent) verb = "quiet";
 
             process.StartInfo.Arguments = $"\"{cd}\" {pName} {config} {verb} {(cMakeOpts != null ? $"\"{cMakeOpts}\"" : "")}";
             process.StartInfo.FileName = Path.Join(ExePath, "build.bat");
@@ -302,7 +309,7 @@ namespace gdmake {
             return !Directory.EnumerateFileSystemEntries(path).Any();
         }
 
-        public static void CompileLibs() {
+        public static void CompileLibs(string outlvl = "silent") {
             LoadSettings();
 
             Directory.CreateDirectory(Path.Join(ExePath, "libs"));
@@ -312,7 +319,7 @@ namespace gdmake {
                 if (sub.Type == Submodule.TSubmoduleType.stCompiledLib) {
                     Console.WriteLine($"Building {sub.Name}...");
 
-                    RunBuildBat(Path.Join(ExePath, "submodules", sub.Name), sub.Name, "Release", sub.CMakeDefs, true);
+                    RunBuildBat(Path.Join(ExePath, "submodules", sub.Name), sub.Name, "Release", sub.CMakeDefs, outlvl == "silent", outlvl);
 
                     foreach (var file in Directory.GetFiles(
                         Path.Join(ExePath, "submodules", sub.Name, "build", "Release")
@@ -430,7 +437,13 @@ namespace gdmake {
                 return;
             }
 
-            LibGit2Sharp.Repository.Clone(sub.URL, path, new LibGit2Sharp.CloneOptions { RecurseSubmodules = true });
+            try {
+                LibGit2Sharp.Repository.Clone(sub.URL, path, new LibGit2Sharp.CloneOptions { RecurseSubmodules = true });
+            } catch (LibGit2Sharp.RecurseSubmodulesException err) {
+                Console.WriteLine($"Uh oh! It appears that LibGit2Sharp is being a lil dumb dumb and can't clone the submodules " +
+                    $"for {sub.Name}. You may need to manually clone them using \"git submodule update --init\", and then run setup "
+                    + "again.");
+            }
 
             Submodules.Add(sub);
 
@@ -499,7 +512,7 @@ namespace gdmake {
             return new SuccessResult();
         }
 
-        public static Result InitializeGlobal(bool re = false) {
+        public static Result InitializeGlobal(bool re = false, string outlvl = "silent") {
             if (!IsGlobalInitialized(true))
                 re = true;
 
@@ -555,7 +568,7 @@ namespace gdmake {
             GenerateSourceFiles();
             GenerateTools();
 
-            CompileLibs();
+            CompileLibs(outlvl);
 
             return new SuccessResult();
         }

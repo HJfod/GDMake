@@ -149,7 +149,7 @@ namespace gdmake {
             var hookCode = "";
 
             foreach (var hook in pre.Hooks)
-                hookCode += $"    GDMAKE_CREATE_HOOK({hook.Address}, {hook.FuncName}, {hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
+                hookCode += $"    GDMAKE_CREATE_HOOK(g_pMod, {hook.Address}, {hook.FuncName}, {hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
             
             str = str.Replace("<<GDMAKE_HOOKS>>", hookCode);
 

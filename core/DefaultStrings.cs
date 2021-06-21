@@ -58,7 +58,7 @@ BOOL APIENTRY DllMain(
         public const string GDMakeModNS =
 @"
 namespace mod {
-    bool loadMod(HMODULE);
+    bool loadMod(HMODULE, GDLoader::Mod*);
     void unloadMod();
 }
 ";
@@ -85,20 +85,25 @@ DefaultStrings.HeaderCredit +
 #include ""mod.h""
 #include ""hooks.h""
 
-bool mod::load(HMODULE hModule) {
-    auto init = MH_Initialize();
-    if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) [[unlikely]]
-        return false;
+GDLoader::Mod* g_pMod;
 
-    if (!loadMod(hModule))
+bool mod::load(HMODULE hModule) {
+    // auto init = MH_Initialize();
+    // if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) [[unlikely]]
+    //     return false;
+
+    g_pMod = GDLoader::createMod(""<<MOD_NAME>>"");
+
+    if (!loadMod(hModule, g_pMod))
         return false;
 
 <<GDMAKE_HOOKS>>
 
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) [[unlikely]] {
-        MH_Uninitialize();
-        return false;
-    }
+    g_pMod->enableAllHooks();
+    // if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) [[unlikely]] {
+    //     MH_Uninitialize();
+    //     return false;
+    // }
     
     return true;
 }
@@ -106,7 +111,9 @@ bool mod::load(HMODULE hModule) {
 void mod::unload() {
     unloadMod();
 
-    MH_DisableHook(MH_ALL_HOOKS);
+    g_pMod->unload();
+
+    // MH_DisableHook(MH_ALL_HOOKS);
 
     // MH_Uninitialize();
 }
