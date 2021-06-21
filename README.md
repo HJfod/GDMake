@@ -62,6 +62,10 @@ bool __fastcall MenuLayer_init(gd::MenuLayer* self) {
 
 # Installation
 
+## Preinstall
+1. Make sure to have installed VS build tools and that you have `MSBuild.exe` in your Path environment variable
+2. Make sure to have installed CMake and that you have `cmake` in your Path environment variable
+
 1. `git clone`
 2. `dotnet run`
 3. Add `bin/Debug/net5.0/win10-x64` to the Path environment variable
