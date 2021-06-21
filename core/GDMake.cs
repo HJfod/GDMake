@@ -69,7 +69,7 @@ namespace gdmake {
                 "https://github.com/matcool/GDLoader",
                 Submodule.TSubmoduleType.stCompiledLib,
                 null,
-                new string[] { "libs/gd-loader.lib" },
+                new string[] { "libs/gd-loader.lib", "libs/minhook.x32.lib" },
                 new HashSet<string> {
                     $"{ExePath}/submodules/gd-loader/src",
                     $"{ExePath}/submodules/gd-loader/libraries/minhook/include"
@@ -321,13 +321,12 @@ namespace gdmake {
 
                     RunBuildBat(Path.Join(ExePath, "submodules", sub.Name), sub.Name, "Release", sub.CMakeDefs, outlvl == "silent", outlvl);
 
-                    foreach (var file in Directory.GetFiles(
-                        Path.Join(ExePath, "submodules", sub.Name, "build", "Release")
-                    ))
-                        if (file.EndsWith(".dll"))
-                            File.Copy(file, Path.Join(ExePath, "dlls", Path.GetFileName(file)), true);
-                        else if (file.EndsWith(".lib"))
-                            File.Copy(file, Path.Join(ExePath, "libs", Path.GetFileName(file)), true);
+                    foreach (var dir in Directory.GetDirectories(Path.Join(ExePath, "submodules", sub.Name, "build"), "Release", SearchOption.AllDirectories))
+                        foreach (var file in Directory.GetFiles(dir))
+                            if (file.EndsWith(".dll"))
+                                File.Copy(file, Path.Join(ExePath, "dlls", Path.GetFileName(file)), true);
+                            else if (file.EndsWith(".lib"))
+                                File.Copy(file, Path.Join(ExePath, "libs", Path.GetFileName(file)), true);
                 }
 
             if (!Directory.Exists(Path.Join(ExePath, "tools", "bin")) || IsDirectoryEmpty(Path.Join(ExePath, "tools", "bin"))) {
