@@ -17,7 +17,8 @@ This simple mod will add a new text to the main menu.
 #include <GDMake.h>
 
 // Create a hook for the main menu;
-// One could also do MenuLayer::init
+// One could also do
+// GDMAKE_HOOK(MenuLayer::init)
 // instead of the address, however
 // to hook with the name instead of
 // the address requires the address
@@ -29,7 +30,7 @@ GDMAKE_HOOK(0x1907b0)
 bool __fastcall MenuLayer_init(gd::MenuLayer* self) {
     // Call original function (leaving this out
     // would result in overwriting the original)
-    // which we do not want rn
+    // which we do not want right now
 
     // This will get replaced with a function call
     // when GDMake preprocesses the source files
