@@ -65,9 +65,9 @@ namespace gdmake {
 
             new Submodule (
                 "MinHook",
-                "https://github.com/TsudaKageyu/MinHook",
+                "https://github.com/HJfod/MinHook",
                 Submodule.TSubmoduleType.stCompiledLib,
-                "-DBUILD_SHARED_LIBS=ON",
+                null, // "-DBUILD_SHARED_LIBS=ON",
                 new string[] { "libs/minhook.x32.lib" }
             ),
 
