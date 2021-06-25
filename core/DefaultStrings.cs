@@ -228,13 +228,7 @@ target_link_libraries(
 @"
 @echo off
 
-<<<<<<< HEAD
 cd /d ""%1""
-=======
-rem GDMake build.bat
-
-cd ""%1""
->>>>>>> 285df6f39d404c3ed0623e9b127c7e556eed9772
 
 if not exist build\ (
     mkdir build
