@@ -12,6 +12,7 @@ namespace gdmake {
 
     public class Preprocessor {
         private string BasePath { get; set; }
+        private bool Verbose { get; set; }
 
         public class Replacement {
             public string MacroName { get; set; }
@@ -29,7 +30,7 @@ namespace gdmake {
             public bool IsReplace { get; internal set; }
             public string Description { get; internal set; }
             public Func<string, MacroFuncRes> Replace { get; internal set; }
-            public enum EReplaceType { Inside, NextFunction }
+            public enum EReplaceType { Inside, NextFunction, NoReplace }
             public EReplaceType ReplaceType;
 
             public string GetFormattedDesc() {
@@ -143,6 +144,7 @@ namespace gdmake {
                         this.Args = funcParams;
 
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG_S", $"{this.FuncName}{TrampolineExt}");
+                        this.HookData = this.HookData.Replace("GDMAKE_ORIG_P", $"{this.FuncName}{TrampolineExt}");
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG_V", $"{this.FuncName}{TrampolineExt}");
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG", $"{this.FuncName}{TrampolineExt}");
 
@@ -151,6 +153,30 @@ namespace gdmake {
                         Console.WriteLine($"Unable to create hook: {e}");
                     }
                 }
+            }
+        }
+
+        public class DebugMsg : MacroFuncRes {
+            public string Command { get; internal set; }
+            public string DbgData { get; internal set; }
+
+            public DebugMsg(string rawData) {
+                var data = rawData.Substring("GDMAKE_DEBUG".Length);
+                data = data.Substring(data.IndexOf('(') + 1);
+
+                this.Command = data.Substring(0, data.IndexOf(')'));
+                data = data.Substring(data.IndexOf(')') + 1);
+
+                string argsName = "";
+                if (this.Command.Contains(',')) {
+                    argsName = this.Command.Substring(this.Command.IndexOf(',') + 1);
+
+                    this.Command = this.Command.Substring(0, this.Command.IndexOf(','));
+                }
+
+                this.DbgData = $"void dbg_{this.Command}(std::vector<std::string> {argsName}){data}";
+
+                this.StringOffset = rawData.Length;
             }
         }
 
@@ -196,18 +222,74 @@ namespace gdmake {
                 "Call the original function from a hook created with GDMAKE_HOOK.",
                 null
             ),
+            new Macro(
+                "GDMAKE_ORIG_P", new string[] { "..." }, "nullptr",
+                "Call the original function from a hook created with GDMAKE_HOOK.",
+                null
+            ),
+            new Macro(
+                "GDMAKE_INT_CONCAT10", new string[] { "str0", "str1", "str2", "str3", "str4", "str5", "str6", "str7", "str8", "str9" },
+                "str0##str1##str2##str3##str4##str5##str6##str7##str8##str9",
+                "Internal GDMake macro for concatenating 10 strings (note: __VA_ARGS__ just doesn't work)",
+                null
+            ),
+            new Macro(
+                "GDMAKE_INT_CONCAT2", new string[] { "str0", "str1" }, "str0##str1",
+                "Internal GDMake macro for concatenating two strings",
+                null
+            ),
+            new Macro(
+                "GDMAKE_DEBUG", new string[] { "command", "argvar" }, "void GDMAKE_INT_CONCAT2(dbg_, command)(std::vector<std::string> argvar)",
+                "Add a custom debug input to the console",
+                s => new DebugMsg(s), Macro.EReplaceType.NoReplace
+            ),
         };
 
+        private static int HasSubstringAndItsNotCommentedOut(string str, string sub) {
+            int inBlockComment = -1;
+            int foffset = 0;
+            foreach (var line in str.Split('\n')) {
+                int offset = line.Length;
+                int s_offset = 0;
+
+                if (inBlockComment != -1) {
+                    s_offset = line.IndexOf("*/") + 1;
+
+                    if (s_offset > 0)
+                        inBlockComment = -1;
+                } else
+                    inBlockComment = line.IndexOf("/*");
+
+                if (inBlockComment != -1)
+                    offset = inBlockComment;
+                else
+                    if (line.Contains("//"))
+                        offset = line.IndexOf("//");
+
+                foffset += line.Length + 1;
+
+                if (offset - s_offset <= 0)
+                    continue;
+
+                if (line.Substring(s_offset, offset - s_offset).Contains(sub))
+                    return foffset - line.Length - 1 + line.Substring(s_offset, offset - s_offset).IndexOf(sub);
+            }
+
+            return -1;
+        }
+
         public List<Hook> Hooks = new List<Hook>();
+        public List<DebugMsg> DebugMsgs = new List<DebugMsg>();
 
         public void GetMacrosAndReplace(string file) {
             var oText = File.ReadAllText(file);
             var includesAndUsings = new HashSet<string>();
             var extraIncludes = "";
+            var macroCount = 0;
 
             try {
                 foreach (var find in new FindItem[] {
-                    new FindItem ( @"using.*?;", true, s => s ),
+                    new FindItem ( @"using.*?;", true, s => s.Contains('"') ? "" : s ),
                     new FindItem ( @"#include [""<].*[>""]", false, s => {
                         if (s.Contains('"')) {
                             s = s.Substring(s.IndexOf('"') + 1);
@@ -233,6 +315,7 @@ namespace gdmake {
                 foreach (var macro in Macros)
                     if (macro.Replace != null) {
                         int ReplaceForSubstring(int sx, int ex) {
+                            macroCount++;
                             var res = macro.Replace(oText.Substring(sx, ex));
 
                             if (res is Hook) {
@@ -254,13 +337,25 @@ namespace gdmake {
                                 oText = aStringBuilder.ToString();
                             }
 
+                            if (res is DebugMsg) {
+                                this.DebugMsgs.Add(res as DebugMsg);
+
+                                if (!extraIncludes.Contains("#include <debug.h>"))
+                                    extraIncludes += "#include <debug.h>\n";
+
+                                var aStringBuilder = new StringBuilder(oText);
+                                aStringBuilder.Remove(sx, ex);
+                                aStringBuilder.Insert(sx, (res as DebugMsg).DbgData);
+                                oText = aStringBuilder.ToString();
+                            }
+
                             return res.StringOffset;
                         };
                         
-                        while (oText.Contains(macro.Text)) {
+                        while (HasSubstringAndItsNotCommentedOut(oText, macro.Text) != -1) {
                             switch (macro.ReplaceType) {
                                 case Macro.EReplaceType.Inside: {
-                                    var startIndex = oText.IndexOf(macro.Text) + macro.Text.Length;
+                                    var startIndex = HasSubstringAndItsNotCommentedOut(oText, macro.Text) + macro.Text.Length;
                                     startIndex = oText.IndexOf('(', startIndex) + 1;
 
                                     int endIndex = startIndex;
@@ -277,7 +372,23 @@ namespace gdmake {
                                 } break;
                                 
                                 case Macro.EReplaceType.NextFunction: {
-                                    var startIndex = oText.IndexOf(macro.Text);
+                                    var startIndex = HasSubstringAndItsNotCommentedOut(oText, macro.Text);
+
+                                    int endIndex = oText.IndexOf('{', startIndex) + 1;
+                                    int paren = 1;
+                                    while (paren > 0)
+                                        if (oText.Length > ++endIndex)
+                                            switch (oText[endIndex]) {
+                                                case '{': paren++; break;
+                                                case '}': paren--; break;
+                                            }
+                                        else break;
+
+                                    ReplaceForSubstring(startIndex, endIndex - startIndex + 1);
+                                } break;
+
+                                case Macro.EReplaceType.NoReplace: {
+                                    var startIndex = HasSubstringAndItsNotCommentedOut(oText, macro.Text);
 
                                     int endIndex = oText.IndexOf('{', startIndex) + 1;
                                     int paren = 1;
@@ -301,12 +412,16 @@ namespace gdmake {
             oText = extraIncludes + oText;
 
             File.WriteAllText(file, oText);
+
+            if (this.Verbose)
+                Console.WriteLine($"Processed {macroCount} macros in {Path.GetFileName(file)}");
         }
 
-        public static Preprocessor PreprocessAllFilesInFolder(string path) {
+        public static Preprocessor PreprocessAllFilesInFolder(string path, bool verbose = false) {
             var pre = new Preprocessor();
 
             pre.BasePath = path;
+            pre.Verbose = verbose;
 
             foreach (var file in Directory
                 .EnumerateFiles(path, "*.*", SearchOption.AllDirectories)

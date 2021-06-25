@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Reflection;
 using System.Collections.Generic;
 using Microsoft.Win32;
+using Microsoft.Build.Execution;
 using utils;
 
 namespace gdmake {
@@ -64,9 +65,9 @@ namespace gdmake {
 
             new Submodule (
                 "MinHook",
-                "https://github.com/TsudaKageyu/MinHook",
+                "https://github.com/HJfod/MinHook",
                 Submodule.TSubmoduleType.stCompiledLib,
-                "-DBUILD_SHARED_LIBS=ON",
+                null, // "-DBUILD_SHARED_LIBS=ON",
                 new string[] { "libs/minhook.x32.lib" }
             ),
 
@@ -146,6 +147,8 @@ namespace gdmake {
                     $"{(macro.Parameters != null ? "(" + String.Join(",", macro.Parameters) + ")" : "")}" + 
                     $" {macro.CppReplace}\n\n";
             
+            includeMacros += DefaultStrings.ExtraCCMacros;
+            
             includeMacros += "#endif";
 
             File.WriteAllText(Path.Join(ExePath, "include/GDMakeMacros.h"), includeMacros);
@@ -155,7 +158,7 @@ namespace gdmake {
 
         private static void GenerateSourceFiles() {
             File.WriteAllText(Path.Join(ExePath, "src/console.h"), DefaultStrings.ConsoleHeader);
-            File.WriteAllText(Path.Join(ExePath, "src/console.cpp"), DefaultStrings.ConsoleSource);
+            // File.WriteAllText(Path.Join(ExePath, "src/console.cpp"), DefaultStrings.ConsoleSource);
         }
 
         private static void GenerateTools() {
@@ -187,6 +190,35 @@ namespace gdmake {
             process.Start();
             process.BeginOutputReadLine();
             process.WaitForExit();
+
+            // var project = new Microsoft.Build.Evaluation.Project(Path.Join(cd, "build", pName + ".sln"));
+
+            // project.SetProperty("Configuration", config);
+            // project.SetProperty("PlatformTarget", "x86");
+
+            // var res = BuildManager.DefaultBuildManager.Build(
+            //     new BuildParameters {
+            //         DetailedSummary = false,
+            //         EnableNodeReuse = false,
+            //         MaxNodeCount = System.Environment.ProcessorCount,
+            //         OnlyLogCriticalEvents = false,
+            //         ShutdownInProcNodeOnBuildFinish = true,
+            //     },
+            //     new BuildRequestData (
+            //         project.CreateProjectInstance(),
+            //         project.Targets.Select(t => t.Key).ToArray()
+            //     )
+            // );
+
+            // if (res.OverallResult == BuildResultCode.Success) {
+            //     Console.WriteLine("Build succesful!");
+                
+            //     return true;
+            // }
+
+            // Console.WriteLine(res.Exception.ToString());
+
+            // return false;
         }
 
         public static Result<string> GetGDPath(bool figureOut = false) {

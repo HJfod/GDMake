@@ -112,6 +112,34 @@ namespace gdmake {
             return str;
         }
 
+        private string GenerateDebugHeader(Preprocessor pre) {
+            var str = DefaultStrings.HeaderCredit +
+            "\n#pragma once\n\n#include <string>\n#include <vector>\n\n";
+
+            var dbgs = "";
+
+            foreach (var dbg in pre.DebugMsgs)
+                dbgs += $"void dbg_{dbg.Command.Replace(" ", "")}(std::vector<std::string>);\n\n";
+
+            str += dbgs + "\n";
+
+            return str;
+        }
+
+        private string GenerateConsoleSource(Preprocessor pre) {
+            var str = DefaultStrings.ConsoleSource;
+
+            var dbgs = "";
+
+            foreach (var dbg in pre.DebugMsgs)
+                dbgs += $"if (inp._Starts_with(\"{dbg.Command}\")) dbg_{dbg.Command.Replace(" ", "")}(args);\n";
+
+            str = str.Replace("<<GDMAKE_DEBUGS>>", dbgs);
+            str = str.Replace("<<GDMAKE_DIR>>", GDMake.ExePath);
+
+            return str;
+        }
+
         private string GenerateModLoad(Preprocessor pre) {
             var str = DefaultStrings.ModLoadSource;
 
@@ -154,6 +182,7 @@ namespace gdmake {
             str = str.Replace("<<GDMAKE_SOURCES>>", srcpath);
 
             str = GDMake.FilterDefaultString(str, "<<?GDMAKE_DLLMAIN>>", this.Dotfile.EntryPoint == null);
+            str = GDMake.FilterDefaultString(str, "<<?GDMAKE_CONSOLE>>", this.Dotfile.ConsoleEnabled);
 
             return str;
         }
@@ -180,7 +209,7 @@ namespace gdmake {
             CopyFolderRecurse(this.Dir, dest, ignores);
         }
 
-        public Result Generate(bool empty = false) {
+        public Result Generate(bool empty = false, bool verbose = false) {
             Console.WriteLine("Generating...");
 
             var dir = GDMake.MakeBuildDirectory(this.Name, empty);
@@ -204,8 +233,18 @@ namespace gdmake {
 
             CopyAllSourceFiles(Path.Join(dir, "src"));
 
-            var pre = Preprocessor.PreprocessAllFilesInFolder(Path.Join(dir, "src"));
+            var pre = Preprocessor.PreprocessAllFilesInFolder(Path.Join(dir, "src"), verbose);
             
+            try { File.WriteAllText(Path.Join(dir, "debug.h"), GenerateDebugHeader(pre)); }
+            catch (Exception e) {
+                return new ErrorResult($"Error: {e.Message}");
+            }
+
+            try { File.WriteAllText(Path.Join(dir, "console.cpp"), GenerateConsoleSource(pre)); }
+            catch (Exception e) {
+                return new ErrorResult($"Error: {e.Message}");
+            }
+
             if (Dotfile.EntryPoint == null)
                 try { File.WriteAllText(Path.Join(dir, "hooks.h"), GenerateHookHeader(pre)); }
                 catch (Exception e) {
@@ -214,6 +253,12 @@ namespace gdmake {
 
             if (Dotfile.EntryPoint == null)
                 try { File.WriteAllText(Path.Join(dir, "mod.cpp"), GenerateModLoad(pre)); }
+                catch (Exception e) {
+                    return new ErrorResult($"Error: {e.Message}");
+                }
+
+            if (Dotfile.EntryPoint == null)
+                try { File.WriteAllText(Path.Join(dir, "mod.h"), DefaultStrings.ModLoadHeader); }
                 catch (Exception e) {
                     return new ErrorResult($"Error: {e.Message}");
                 }

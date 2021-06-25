@@ -27,10 +27,12 @@ DWORD WINAPI load_thread(LPVOID hModule) {
             MessageBoxA(nullptr, ""Unable to set up hooks!"", ""<<MOD_NAME>>"", MB_ICONERROR);
             <<?CONSOLE>>gdmake::console::unload();
             FreeLibraryAndExitThread((HMODULE)hModule, 0);
+            return 0;
         }
     } else {
         MessageBoxA(nullptr, ""Unable to load!"", ""<<MOD_NAME>>"", MB_ICONERROR);
         FreeLibraryAndExitThread((HMODULE)hModule, 0);
+        return 0;
     }
 
     <<?CONSOLE>>mod::unload();
@@ -106,7 +108,7 @@ void mod::unload() {
 
     MH_DisableHook(MH_ALL_HOOKS);
 
-    MH_Uninitialize();
+    // MH_Uninitialize();
 }
 
 #endif
@@ -129,11 +131,13 @@ namespace gdmake {
         public const string ConsoleSource =
 DefaultStrings.HeaderCredit +
 @"
-#include ""console.h""
+#include ""<<GDMAKE_DIR>>/src/console.h""
 #include <Windows.h>
 #include <stdio.h>
 #include <iostream>
 #include <string>
+#include <sstream>
+#include ""debug.h""
 
 bool gdmake::console::load() {
     if (AllocConsole() == 0)
@@ -158,6 +162,15 @@ void gdmake::console::awaitUnload() {
     std::string inp;
     getline(std::cin, inp);
 
+    std::string inpa;
+    std::stringstream ss(inp);
+    std::vector<std::string> args;
+    while (ss >> inpa)
+        args.push_back(inpa);
+    ss.clear();
+
+    <<GDMAKE_DEBUGS>>
+
     if (inp != ""e"")
         awaitUnload();
 }
@@ -170,6 +183,18 @@ cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# shut the fuck up cmake
+function(message)
+  list(GET ARGV 0 MessageType)
+  if(MessageType STREQUAL FATAL_ERROR OR
+     MessageType STREQUAL SEND_ERROR OR
+     MessageType STREQUAL WARNING OR
+     MessageType STREQUAL AUTHOR_WARNING)
+    list(REMOVE_AT ARGV 0)
+    _message(${MessageType} ""${ARGV}"")
+  endif()
+endfunction()
+
 set(PROJECT_NAME <<MOD_NAME>>)
 
 project(${PROJECT_NAME} VERSION 1.0.0)
@@ -177,7 +202,7 @@ project(${PROJECT_NAME} VERSION 1.0.0)
 file(GLOB_RECURSE SOURCES 
     <<?GDMAKE_DLLMAIN>>dllmain.cpp
     <<?GDMAKE_DLLMAIN>>mod.cpp
-    <<GDMAKE_DIR>>/src/console.cpp
+    <<?GDMAKE_CONSOLE>>console.cpp
     src/*.cpp
     <<GDMAKE_SOURCES>>
 )
@@ -201,11 +226,15 @@ target_link_libraries(
 
         public const string BuildBat =
 @"
-rem GDMake build.bat
-
 @echo off
 
+<<<<<<< HEAD
 cd /d ""%1""
+=======
+rem GDMake build.bat
+
+cd ""%1""
+>>>>>>> 285df6f39d404c3ed0623e9b127c7e556eed9772
 
 if not exist build\ (
     mkdir build
@@ -379,6 +408,8 @@ namespace gdmake {
     namespace extra {
         template<typename T>
         static T getChild(cocos2d::CCNode* x, int i) {
+            if (i < 0)
+                i = x->getChildrenCount() + i;
             return static_cast<T>(x->getChildren()->objectAtIndex(i));
         }
 
@@ -470,6 +501,21 @@ namespace gdmake {
 }
 
 #endif
+";
+
+        public const string ExtraCCMacros =
+@"
+#define CCARRAY_FOREACH_B_BASE(__array__, __obj__, __type__, __index__) \
+    if (__array__ && __array__->count()) \
+    for (auto [__index__, __obj__] = std::tuple<unsigned int, __type__> { 0u, nullptr }; \
+        (__index__ < __array__->count() && (__obj__ = reinterpret_cast<__type__>(__array__->objectAtIndex(__index__)))); \
+        __index__++)
+
+#define CCARRAY_FOREACH_B_TYPE(__array__, __obj__, __type__) \
+    CCARRAY_FOREACH_B_BASE(__array__, __obj__, __type__*, ix)
+
+#define CCARRAY_FOREACH_B(__array__, __obj__) \
+    CCARRAY_FOREACH_B_BASE(__array__, __obj__, cocos2d::CCObject*, ix)
 ";
     }
 }

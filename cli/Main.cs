@@ -187,7 +187,7 @@ Commands (Use help <command> for extra information):"
             if (res.Failure)
                 Console.WriteLine($"Error: {(res as ErrorResult).Message}");
             else {
-                res = project.Generate();
+                res = project.Generate(false, ap.HasFlag("vgen"));
 
                 if (res.Failure)
                     Console.WriteLine($"Error: {(res as ErrorResult).Message}");
@@ -271,7 +271,7 @@ Commands (Use help <command> for extra information):"
                             if (res.Failure)
                                 Console.WriteLine($"Error: {(res as ErrorResult).Message}");
                             else {
-                                res = project.Generate(ap.HasFlag("re"));
+                                res = project.Generate(ap.HasFlag("re"), ap.HasFlag("vgen"));
                                 
                                 if (res.Failure)
                                     Console.WriteLine($"Error: {(res as ErrorResult).Message}");
@@ -509,6 +509,29 @@ Commands (Use help <command> for extra information):"
                                         }
                                     }
                             })},
+                            { "rm-inc", new ArgHandler(null, args => {
+                                if (!GDMake.IsGlobalInitialized()) {
+                                    GDMake.ShowGlobalNotInitializedError();
+                                    return;
+                                }
+
+                                if (args.Count < 2)
+                                    Console.WriteLine("Usage: submodules rm-inc <submodule> <path>");
+                                else {
+                                    var path = Path.Join(GDMake.ExePath, "submodules", args[0], args[1]);
+
+                                    var sub = GDMake.GetSubmoduleByName(args[0]);
+
+                                    if (sub == null)
+                                        Console.WriteLine($"Submodule {sub} does not exist!");
+                                    else {
+                                        if (sub.IncludePaths.Remove(path.Replace("\\", "/")))
+                                            GDMake.SaveSettings();
+                                        else
+                                            Console.WriteLine($"Path {(path.Replace("\\", "/"))} not found!");
+                                    }
+                                }
+                            })},
 
                             { "add-src", new ArgHandler(null, args => {
                                 if (!GDMake.IsGlobalInitialized()) {
@@ -527,8 +550,8 @@ Commands (Use help <command> for extra information):"
                                         path = path.Substring(0, path.IndexOf('*'));
                                     }
 
-                                    if (!Directory.Exists(path))
-                                        Console.WriteLine($"Directory submodules/{args[0]}/{args[1]} does not exist!");
+                                    if ((arx.Length > 0 ? !Directory.Exists(path) : !File.Exists(path)))
+                                        Console.WriteLine($"File/directory submodules/{args[0]}/{args[1]} does not exist!");
                                     else {
                                         var sub = GDMake.GetSubmoduleByName(args[0]);
 
@@ -541,6 +564,35 @@ Commands (Use help <command> for extra information):"
 
                                             GDMake.SaveSettings();
                                         }
+                                    }
+                                }
+                            })},
+                            { "rm-src", new ArgHandler(null, args => {
+                                if (!GDMake.IsGlobalInitialized()) {
+                                    GDMake.ShowGlobalNotInitializedError();
+                                    return;
+                                }
+
+                                if (args.Count < 2)
+                                    Console.WriteLine("Usage: submodules rm-src <submodule> <path>");
+                                else {
+                                    var path = Path.Join(GDMake.ExePath, "submodules", args[0], args[1]);
+
+                                    string arx = "";
+                                    if (path.Contains('*')) {
+                                        arx = path.Substring(path.IndexOf('*'));
+                                        path = path.Substring(0, path.IndexOf('*'));
+                                    }
+
+                                    var sub = GDMake.GetSubmoduleByName(args[0]);
+
+                                    if (sub == null)
+                                        Console.WriteLine($"Submodule {sub} does not exist!");
+                                    else {
+                                        if (sub.SourcePaths.Remove(path.Replace("\\", "/") + arx))
+                                            GDMake.SaveSettings();
+                                        else
+                                            Console.WriteLine($"Path {(path.Replace("\\", "/") + arx)} not found!");
                                     }
                                 }
                             })},
