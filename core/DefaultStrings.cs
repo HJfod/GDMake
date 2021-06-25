@@ -205,7 +205,7 @@ rem GDMake build.bat
 
 @echo off
 
-cd ""%1""
+cd /d ""%1""
 
 if not exist build\ (
     mkdir build

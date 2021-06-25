@@ -249,7 +249,7 @@ namespace gdmake {
 
             var verb = verbosity;
             if (verb == "silent") verb = "quiet";
-            GDMake.RunBuildBat(Path.Join(builddir), this.Name, config, null, verbosity == "silent", verb);
+            GDMake.RunBuildBat(Path.Join(builddir).Replace("\\", "/"), this.Name, config, null, verbosity == "silent", verb);
 
             var resDir = Path.Join(builddir, "res");
 
