@@ -176,8 +176,9 @@ namespace gdmake {
 
             var srcpath = "";
             foreach (var sub in GDMake.Submodules)
-                foreach (var src in sub.SourcePaths)
-                    srcpath += src + "\n";
+                if (this.Dotfile.Submodules.Contains(sub.Name) && sub.Type == GDMake.Submodule.TSubmoduleType.stIncludeSource)
+                    foreach (var src in sub.SourcePaths)
+                        srcpath += src + "\n";
             
             str = str.Replace("<<GDMAKE_SOURCES>>", srcpath);
 

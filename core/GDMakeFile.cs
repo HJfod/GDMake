@@ -18,6 +18,7 @@ namespace gdmake {
         public bool ConsoleEnabled { get; set; } = false;
         public TargetCompiler Compiler { get; set; } = TargetCompiler.MSVC;
         public TargetPlatform Platform { get; set; } = TargetPlatform.Win32;
+        public List<string> Submodules { get; set; } = GDMake.DefaultSubmodules.Select(x => x.Name).ToList<string>();
         public List<string> IgnoredFiles { get; set; } = new List<string>();
         public List<string> Libs { get; set; } = GDMake.DefaultSubmodules
             .Where(x => x.LibPaths != null)
