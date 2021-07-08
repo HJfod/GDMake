@@ -108,7 +108,7 @@ void mod::unload() {
 
     MH_DisableHook(MH_ALL_HOOKS);
 
-    // MH_Uninitialize();
+    MH_Uninitialize();
 }
 
 #endif
