@@ -164,7 +164,10 @@ namespace gdmake {
             
             var libstr = "";
             foreach (var lib in libs)
-                libstr += $"{GDMake.ExePath.Replace("\\", "/")}/{lib}\n";
+                if (Path.IsPathRooted(lib))
+                    libstr += lib + "\n";
+                else
+                    libstr += $"{GDMake.ExePath.Replace("\\", "/")}/{lib}\n";
 
             str = str.Replace("<<GDMAKE_LIBS>>", libstr);
 
