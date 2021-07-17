@@ -270,6 +270,29 @@ namespace gdmake {
             CopyFolderRecurse(this.Dir, dest, ignores);
         }
 
+        private void DeleteSourceFilesNotInDestination(string dest) {
+            foreach (string sourcePath in FindFiles(
+                dest,
+                "*.cpp;*.cc;*.cp;*.c;*.cxx;*.hpp;*.hh;*.hp;*.h;*.hxx",
+                true
+            )) {
+                var targetPath = sourcePath.Replace(dest, this.Dir);
+
+                if (!File.Exists(targetPath))
+                    File.Delete(sourcePath);
+            }
+        }
+
+        private void GenerateAndSaveFile(string dir, string filename, string data) {
+            string file = Path.Join(dir, filename);
+            string oldFile = "";
+            if (File.Exists(file))
+                oldFile = File.ReadAllText(file);
+
+            if (Dotfile.EntryPoint == null && oldFile != data)
+                File.WriteAllText(file, data);
+        }
+
         public Result Generate(bool empty = false, bool fullRegen = false, bool verbose = false) {
             Console.WriteLine("Generating...");
 
@@ -280,67 +303,28 @@ namespace gdmake {
             if (dir == null)
                 return new ErrorResult("Unable to create build directory!");
 
-            if (Dotfile.EntryPoint == null)
-                try { File.WriteAllText(Path.Join(dir, "dllmain.cpp"), GenerateDLLMain()); }
+            if (FullRegen) {
+                if (Directory.Exists(Path.Join(dir, "src")))
+                    GDMake.ForceDeleteDirectory(Path.Join(dir, "src"));
+
+                try { Directory.CreateDirectory(Path.Join(dir, "src")); }
                 catch (Exception e) {
                     return new ErrorResult($"Error: {e.Message}");
                 }
-
-            // if (Directory.Exists(Path.Join(dir, "src")))
-            //     GDMake.ForceDeleteDirectory(Path.Join(dir, "src"));
-
-            // try { Directory.CreateDirectory(Path.Join(dir, "src")); }
-            // catch (Exception e) {
-            //     return new ErrorResult($"Error: {e.Message}");
-            // }
+            }
 
             CopyAllSourceFiles(Path.Join(dir, "src"));
+            DeleteSourceFilesNotInDestination(Path.Join(dir, "src"));
 
             var pre = Preprocessor.PreprocessAllFilesInFolder(this.Dir, Path.Join(dir, "src"), fullRegen, verbose);
             
-            try { File.WriteAllText(Path.Join(dir, "debug.h"), GenerateDebugHeader(pre)); }
-            catch (Exception e) {
-                return new ErrorResult($"Error: {e.Message}");
-            }
-
-            try { File.WriteAllText(Path.Join(dir, "console.cpp"), GenerateConsoleSource(pre)); }
-            catch (Exception e) {
-                return new ErrorResult($"Error: {e.Message}");
-            }
-
-            string oldhooks_h = "";
-            if (File.Exists(Path.Join(dir, "hooks.h")))
-                oldhooks_h = File.ReadAllText(Path.Join(dir, "hooks.h"));
-            string newhooks_h = GenerateHookHeader(pre);
-
-            if (Dotfile.EntryPoint == null && oldhooks_h != newhooks_h)
-                try { File.WriteAllText(Path.Join(dir, "hooks.h"), newhooks_h); }
-                catch (Exception e) {
-                    return new ErrorResult($"Error: {e.Message}");
-                }
-
-            if (Dotfile.EntryPoint == null)
-                try { File.WriteAllText(Path.Join(dir, "mod.cpp"), GenerateModLoad(pre)); }
-                catch (Exception e) {
-                    return new ErrorResult($"Error: {e.Message}");
-                }
-
-            if (Dotfile.EntryPoint == null)
-                try { File.WriteAllText(Path.Join(dir, "mod.h"), DefaultStrings.ModLoadHeader); }
-                catch (Exception e) {
-                    return new ErrorResult($"Error: {e.Message}");
-                }
-
-            if (Dotfile.EntryPoint == null)
-                try { File.WriteAllText(Path.Join(dir, "mod.h"), DefaultStrings.ModLoadHeader); }
-                catch (Exception e) {
-                    return new ErrorResult($"Error: {e.Message}");
-                }
-
-            try { File.WriteAllText(Path.Join(dir, "CMakeLists.txt"), GenerateCMakeLists(this.Dotfile.Libs)); }
-            catch (Exception e) {
-                return new ErrorResult($"Error: {e.Message}");
-            }
+            GenerateAndSaveFile(dir, "dllmain.cpp", GenerateDLLMain());
+            GenerateAndSaveFile(dir, "debug.h", GenerateDebugHeader(pre));
+            GenerateAndSaveFile(dir, "console.cpp", GenerateConsoleSource(pre));
+            GenerateAndSaveFile(dir, "hooks.h", GenerateHookHeader(pre));
+            GenerateAndSaveFile(dir, "mod.cpp", GenerateModLoad(pre));
+            GenerateAndSaveFile(dir, "mod.h", DefaultStrings.ModLoadHeader);
+            GenerateAndSaveFile(dir, "CMakeLists.txt", GenerateCMakeLists(this.Dotfile.Libs));
 
             this.builddir = dir;
             this.builddlls = this.Dotfile.Dlls;
