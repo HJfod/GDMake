@@ -187,7 +187,7 @@ Commands (Use help <command> for extra information):"
             if (res.Failure)
                 Console.WriteLine($"Error: {(res as ErrorResult).Message}");
             else {
-                res = project.Generate(false, ap.HasFlag("vgen"));
+                res = project.Generate(false, ap.HasFlag("re"), ap.HasFlag("vgen"));
 
                 if (res.Failure)
                     Console.WriteLine($"Error: {(res as ErrorResult).Message}");

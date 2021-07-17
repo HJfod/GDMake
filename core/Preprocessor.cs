@@ -12,7 +12,9 @@ namespace gdmake {
 
     public class Preprocessor {
         private string BasePath { get; set; }
+        private string ResultPath { get; set; }
         private bool Verbose { get; set; }
+        private bool ReplaceAllFiles { get; set; }
 
         public class Replacement {
             public string MacroName { get; set; }
@@ -278,14 +280,31 @@ namespace gdmake {
             return -1;
         }
 
+        private static string GetIncludeGuard(string file) {
+            var fname = file
+                .ToUpper()
+                .Replace("\\", "__")
+                .Replace("/", "__")
+                .Replace(":", "_")
+                .Replace(' ', '_')
+                .Replace('.', '_');
+
+            var ig = $"__GDMAKE_IG_{fname}__";
+
+            return $"#pragma once\n#ifndef {ig}\n#define {ig}\n";
+        }
+
         public List<Hook> Hooks = new List<Hook>();
         public List<DebugMsg> DebugMsgs = new List<DebugMsg>();
 
-        public void GetMacrosAndReplace(string file) {
+        public void GetMacrosAndReplace(string file, string destFile) {
             var oText = File.ReadAllText(file);
             var includesAndUsings = new HashSet<string>();
             var extraIncludes = "";
             var macroCount = 0;
+
+            bool addIncludeGuard = oText.Contains("#pragma once");
+            oText = oText.Replace("#pragma once", GetIncludeGuard(file));
 
             try {
                 foreach (var find in new FindItem[] {
@@ -294,7 +313,7 @@ namespace gdmake {
                         if (s.Contains('"')) {
                             s = s.Substring(s.IndexOf('"') + 1);
 
-                            return $"#include \"{Path.Join(Path.GetDirectoryName(file), s).Replace("\\", "/")}";
+                            return $"#include \"{Path.Join(Path.GetDirectoryName(destFile), s).Replace("\\", "/")}";
                         } else
                             return s;
                     } ),
@@ -410,23 +429,35 @@ namespace gdmake {
             }
 
             oText = extraIncludes + oText;
+            
+            if (addIncludeGuard)
+                oText += "\n#endif\n";
 
-            File.WriteAllText(file, oText);
+            if (File.Exists(destFile) && !this.ReplaceAllFiles) {
+                FileInfo sourceInfo = new FileInfo(file);
+                FileInfo targetInfo = new FileInfo(destFile);
+
+                if (sourceInfo.LastWriteTime > targetInfo.LastWriteTime)
+                    File.WriteAllText(destFile, oText);
+            } else
+                File.WriteAllText(destFile, oText);
 
             if (this.Verbose)
                 Console.WriteLine($"Processed {macroCount} macros in {Path.GetFileName(file)}");
         }
 
-        public static Preprocessor PreprocessAllFilesInFolder(string path, bool verbose = false) {
+        public static Preprocessor PreprocessAllFilesInFolder(string path, string resPath, bool replaceAlways = false, bool verbose = false) {
             var pre = new Preprocessor();
 
             pre.BasePath = path;
+            pre.ResultPath = resPath;
             pre.Verbose = verbose;
+            pre.ReplaceAllFiles = replaceAlways;
 
             foreach (var file in Directory
                 .EnumerateFiles(path, "*.*", SearchOption.AllDirectories)
                 .Where(f => (new string[] { ".cpp", ".c", ".h", ".hpp" }).Any(s => f.EndsWith(s))))
-                    pre.GetMacrosAndReplace(file);
+                    pre.GetMacrosAndReplace(file, file.Replace(path, resPath));
 
             return pre;
         }

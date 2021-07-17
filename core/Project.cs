@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using utils;
 
@@ -25,6 +26,7 @@ namespace gdmake {
 
         private string builddir = null;
         private List<string> builddlls = null;
+        private bool FullRegen = false;
 
         public GDMakeFile Dotfile = null;
 
@@ -93,7 +95,7 @@ namespace gdmake {
 
         private string GenerateHookHeader(Preprocessor pre) {
             var str = DefaultStrings.HeaderCredit + 
-            "\n#pragma once\n\n#include <GDMake.h>\n\n";
+            "\n#ifndef __GDMAKE_HOOKS_H__\n#define __GDMAKE_HOOKS_H__\n\n#include <GDMake.h>\n\n";
 
             var includes = "";
             var hooks = "";
@@ -108,6 +110,8 @@ namespace gdmake {
 
             str += includes + "\n\n";
             str += hooks + "\n";
+
+            str += "\n#endif\n";
 
             return str;
         }
@@ -191,16 +195,69 @@ namespace gdmake {
             return str;
         }
 
+        private List<string> FindFiles(string dir_name, string patterns, bool search_subdirectories) {
+            // from http://csharphelper.com/blog/2015/06/find-files-that-match-multiple-patterns-in-c/
+
+            // Make the result list.
+            List<string> files = new List<string>();
+
+            // Get the patterns.
+            string[] pattern_array = patterns.Split(';');
+
+            // Search.
+            SearchOption search_option = SearchOption.TopDirectoryOnly;
+            if (search_subdirectories)
+                search_option = SearchOption.AllDirectories;
+            foreach (string pattern in pattern_array)
+            {
+                foreach (string filename in Directory.GetFiles(
+                    dir_name, pattern, search_option))
+                {
+                    if (!files.Contains(filename)) files.Add(filename);
+                }
+            }
+
+            // Sort.
+            files.Sort();
+
+            // Return the result.
+            return files;
+        }
+
+        private bool IsNotIgnoredFilePath(string ignore, string path) {
+            path = path.Replace("\\", "/");
+            var dirs = path.Split("/");
+
+            foreach (var dir in dirs)
+                if (Regex.IsMatch(dir, ignore))
+                    return false;
+            
+            return true;
+        }
+
         private void CopyFolderRecurse(string sourcePath, string targetPath, List<string> ignores) {
-            // Now Create all of the directories
             foreach (string dirPath in Directory.GetDirectories(sourcePath, "*", SearchOption.AllDirectories))
-                if (!ignores.Any(s => s == dirPath))
+                if (!ignores.Any(s => IsNotIgnoredFilePath(s, dirPath)))
                     Directory.CreateDirectory(dirPath.Replace(sourcePath, targetPath));
 
-            // Copy all the files & Replaces any files with the same name
-            foreach (string newPath in Directory.EnumerateFiles(sourcePath, "*.*", SearchOption.AllDirectories))
-                if (!ignores.Any(s => s == Path.GetFileName(newPath)))
-                    File.Copy(newPath, newPath.Replace(sourcePath, targetPath), true);
+            foreach (string newPath in FindFiles(
+                sourcePath,
+                "*.cpp;*.cc;*.cp;*.c;*.cxx;*.hpp;*.hh;*.hp;*.h;*.hxx",
+                true
+            ))
+                if (!ignores.Any(s => IsNotIgnoredFilePath(s, newPath))) {
+                    var aTargetPath = newPath.Replace(sourcePath, targetPath);
+
+                    if (File.Exists(aTargetPath) && !this.FullRegen) {
+                        FileInfo sourceInfo = new FileInfo(sourcePath);
+                        FileInfo targetInfo = new FileInfo(aTargetPath);
+
+                        if (sourceInfo.LastWriteTime < targetInfo.LastWriteTime)
+                            continue;
+                    }
+
+                    File.Copy(newPath, aTargetPath, true);
+                }
         }
 
         private void CopyAllSourceFiles(string dest) {
@@ -213,10 +270,12 @@ namespace gdmake {
             CopyFolderRecurse(this.Dir, dest, ignores);
         }
 
-        public Result Generate(bool empty = false, bool verbose = false) {
+        public Result Generate(bool empty = false, bool fullRegen = false, bool verbose = false) {
             Console.WriteLine("Generating...");
 
             var dir = GDMake.MakeBuildDirectory(this.Name, empty);
+
+            this.FullRegen = fullRegen;
 
             if (dir == null)
                 return new ErrorResult("Unable to create build directory!");
@@ -227,17 +286,17 @@ namespace gdmake {
                     return new ErrorResult($"Error: {e.Message}");
                 }
 
-            if (Directory.Exists(Path.Join(dir, "src")))
-                GDMake.ForceDeleteDirectory(Path.Join(dir, "src"));
+            // if (Directory.Exists(Path.Join(dir, "src")))
+            //     GDMake.ForceDeleteDirectory(Path.Join(dir, "src"));
 
-            try { Directory.CreateDirectory(Path.Join(dir, "src")); }
-            catch (Exception e) {
-                return new ErrorResult($"Error: {e.Message}");
-            }
+            // try { Directory.CreateDirectory(Path.Join(dir, "src")); }
+            // catch (Exception e) {
+            //     return new ErrorResult($"Error: {e.Message}");
+            // }
 
             CopyAllSourceFiles(Path.Join(dir, "src"));
 
-            var pre = Preprocessor.PreprocessAllFilesInFolder(Path.Join(dir, "src"), verbose);
+            var pre = Preprocessor.PreprocessAllFilesInFolder(this.Dir, Path.Join(dir, "src"), fullRegen, verbose);
             
             try { File.WriteAllText(Path.Join(dir, "debug.h"), GenerateDebugHeader(pre)); }
             catch (Exception e) {
@@ -249,8 +308,13 @@ namespace gdmake {
                 return new ErrorResult($"Error: {e.Message}");
             }
 
-            if (Dotfile.EntryPoint == null)
-                try { File.WriteAllText(Path.Join(dir, "hooks.h"), GenerateHookHeader(pre)); }
+            string oldhooks_h = "";
+            if (File.Exists(Path.Join(dir, "hooks.h")))
+                oldhooks_h = File.ReadAllText(Path.Join(dir, "hooks.h"));
+            string newhooks_h = GenerateHookHeader(pre);
+
+            if (Dotfile.EntryPoint == null && oldhooks_h != newhooks_h)
+                try { File.WriteAllText(Path.Join(dir, "hooks.h"), newhooks_h); }
                 catch (Exception e) {
                     return new ErrorResult($"Error: {e.Message}");
                 }
