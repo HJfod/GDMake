@@ -394,6 +394,17 @@ namespace gdmake {
 
             if (res.Failure)
                 return res;
+            
+            foreach (var resc in Dotfile.Resources)
+                try {
+                    var target = Path.Join(
+                        Path.GetDirectoryName(GDMake.GetGDPath().Data),
+                        "Resources", 
+                        Path.GetFileName(resc)
+                    );
+                    if (!File.Exists(target))
+                        File.Copy(resc, target);
+                } catch (Exception) { Console.WriteLine($"Error copying {resc}"); }
 
             res = GDMake.InjectDLL(Path.Join((res as SuccessResult<string>).Data, "res", $"{this.Name}.dll"));
 

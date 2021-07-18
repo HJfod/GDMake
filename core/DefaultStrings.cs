@@ -490,6 +490,19 @@ namespace gdmake {
         );
     }
 
+    inline bool patchBytesEx(
+        uintptr_t const absoluteAddress,
+        std::vector<uint8_t> const& bytes
+    ) {
+        return WriteProcessMemory(
+            GetCurrentProcess(),
+            reinterpret_cast<LPVOID>(absoluteAddress),
+            bytes.data(),
+            bytes.size(),
+            nullptr
+        );
+    }
+
     using unknown_t = uintptr_t;
     using edx_t = uintptr_t;
 }
