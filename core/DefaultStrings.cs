@@ -490,7 +490,34 @@ namespace gdmake {
         );
     }
 
-    inline bool patchBytesEx(
+    // returns overwritten bytes
+    // nothing is returned on error
+    inline std::vector<uint8_t> patchBytesEx(
+        uintptr_t const address,
+        std::vector<uint8_t> const& bytes
+    ) {
+        std::vector<uint8_t> ret(bytes.size());
+
+        if (!ReadProcessMemory(
+            GetCurrentProcess(),
+            reinterpret_cast<LPVOID>(gd::base + address),
+            ret.data(),
+            ret.size(),
+            nullptr
+        )) return {};
+
+        if (!WriteProcessMemory(
+            GetCurrentProcess(),
+            reinterpret_cast<LPVOID>(gd::base + address),
+            bytes.data(),
+            bytes.size(),
+            nullptr
+        )) return {};
+
+        return ret;
+    }
+
+    inline bool patchBytesAbs(
         uintptr_t const absoluteAddress,
         std::vector<uint8_t> const& bytes
     ) {
