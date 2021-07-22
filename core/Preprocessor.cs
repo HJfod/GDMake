@@ -439,8 +439,10 @@ namespace gdmake {
 
                 if (sourceInfo.LastWriteTime > targetInfo.LastWriteTime)
                     File.WriteAllText(destFile, oText);
-            } else
+            } else {
+                (new FileInfo(destFile)).Directory.Create();
                 File.WriteAllText(destFile, oText);
+            }
 
             if (this.Verbose)
                 Console.WriteLine($"Processed {macroCount} macros in {Path.GetFileName(file)}");

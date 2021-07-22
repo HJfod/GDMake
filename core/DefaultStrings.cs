@@ -494,25 +494,47 @@ namespace gdmake {
     // nothing is returned on error
     inline std::vector<uint8_t> patchBytesEx(
         uintptr_t const address,
-        std::vector<uint8_t> const& bytes
+        std::vector<uint8_t> const& bytes,
+        bool hardOverwrite = false
     ) {
+        auto hProcess = GetCurrentProcess();
+        auto nTarget = reinterpret_cast<LPVOID>(gd::base + address);
         std::vector<uint8_t> ret(bytes.size());
 
         if (!ReadProcessMemory(
-            GetCurrentProcess(),
-            reinterpret_cast<LPVOID>(gd::base + address),
+            hProcess,
+            nTarget,
             ret.data(),
             ret.size(),
             nullptr
         )) return {};
+         
+        DWORD oldprotect;
+        if (hardOverwrite)
+            VirtualProtectEx(
+                hProcess,
+                nTarget,
+                bytes.size(),
+                PAGE_EXECUTE_READWRITE,
+                &oldprotect
+            );
 
         if (!WriteProcessMemory(
-            GetCurrentProcess(),
-            reinterpret_cast<LPVOID>(gd::base + address),
+            hProcess,
+            nTarget,
             bytes.data(),
             bytes.size(),
             nullptr
         )) return {};
+    
+        if (hardOverwrite)
+            VirtualProtectEx(
+                hProcess,
+                nTarget,
+                bytes.size(),
+                oldprotect,
+                &oldprotect
+            );
 
         return ret;
     }
