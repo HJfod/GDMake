@@ -15,6 +15,7 @@ namespace gdmake {
         private string ResultPath { get; set; }
         private bool Verbose { get; set; }
         private bool ReplaceAllFiles { get; set; }
+        public bool AddLogToHook { get; internal set; }
 
         public class Replacement {
             public string MacroName { get; set; }
@@ -31,7 +32,7 @@ namespace gdmake {
             public string CppReplace { get; internal set; }
             public bool IsReplace { get; internal set; }
             public string Description { get; internal set; }
-            public Func<string, MacroFuncRes> Replace { get; internal set; }
+            public Func<string, Preprocessor, MacroFuncRes> Replace { get; internal set; }
             public enum EReplaceType { Inside, NextFunction, NoReplace }
             public EReplaceType ReplaceType;
 
@@ -60,7 +61,7 @@ namespace gdmake {
                 string[] pms,
                 string crepl,
                 string desc,
-                Func<string, MacroFuncRes> repl,
+                Func<string, Preprocessor, MacroFuncRes> repl,
                 EReplaceType type = EReplaceType.Inside
             ) {
                 this.Text = txt;
@@ -77,6 +78,8 @@ namespace gdmake {
             public const string TrampolineExt = "_o";
             public string HookData { get; internal set; }
             public int Address { get; internal set; }
+            public string Symbol { get; internal set; }
+            public string Module { get; internal set; }
             public string FuncName { get; internal set; }
             public string ReturnType { get; internal set; }
             public string CallingConvention { get; internal set; }
@@ -92,17 +95,32 @@ namespace gdmake {
                 return this.RawSignature;
             }
 
-            public Hook(string rawData) {
+            public Hook(string rawData, Preprocessor pre) {
                 var data = rawData.Substring("GDMAKE_HOOK".Length);
                 data = data.Substring(data.IndexOf('(') + 1);
 
                 var addr = data.Substring(0, data.IndexOf(')'));
                 int addri = 0;
 
-                if (!Int32.TryParse(addr.Substring(2), NumberStyles.HexNumber, null, out addri))
-                    addri = Addresses.Names.GetValueOrDefault(addr.Replace(" ", "").Replace("::", "."), 0);
-                
-                this.Address = addri;
+                if (addr.Contains('"')) {
+                    addr = addr.Substring(1, addr.Length - 2);
+
+                    if (!addr.Contains("::")) {
+                        Console.WriteLine($"Unable to create hook: {addr} - missing module name");
+                        this.HookData = rawData;
+                    } else {
+                        this.Module = addr.Substring(0, addr.IndexOf("::"));
+                        this.Symbol = addr.Substring(addr.IndexOf("::") + 2);
+
+                        addri = -1;
+                        this.Address = -1;
+                    }
+                } else {
+                    if (!Int32.TryParse(addr.Substring(2), NumberStyles.HexNumber, null, out addri))
+                        addri = Addresses.Names.GetValueOrDefault(addr.Replace(" ", "").Replace("::", "."), 0);
+
+                    this.Address = addri;
+                }
 
                 if (addri == 0) {
                     Console.WriteLine($"Unable to create hook: {addr} is not a valid address");
@@ -120,10 +138,10 @@ namespace gdmake {
 
                         this.RawSignature = funcDef;
 
-                        var funcType = funcDef.Substring(0, funcDef.IndexOf("(")).Trim();
+                        var funcType = funcDef.Substring(0, funcDef.LastIndexOf("(")).Trim();
                         var funcParams = funcDef.Substring(
-                            funcDef.IndexOf('(') + 1,
-                            funcDef.IndexOf(')') - funcDef.IndexOf('(') - 1
+                            funcDef.LastIndexOf('(') + 1,
+                            funcDef.LastIndexOf(')') - funcDef.LastIndexOf('(') - 1
                         ).Trim();
 
                         var types = funcType.Split(' ');
@@ -141,9 +159,31 @@ namespace gdmake {
                                 this.CallingConvention = types[i];
                             else
                                 this.ReturnType += types[i] + ' ';
+
+                        var attrs = new List<string>();  
+                        if (funcType.Contains("GDMAKE_ATTR")) {
+                            var attrStr = funcType.Substring(
+                                funcType.IndexOf("GDMAKE_ATTR")
+                            );
+
+                            attrStr = attrStr.Substring(attrStr.IndexOf("(") + 1);
+                            attrStr = attrStr.Substring(0, attrStr.IndexOf(")"));
+
+                            attrs = attrStr.Split(",").ToList();
+                            
+                            attrs.ForEach(s => s.Trim());
+                        }
                         
                         this.FuncName = types[types.Length - 1];
                         this.Args = funcParams;
+
+                        if (pre.AddLogToHook && !attrs.Contains("NoLog")) {
+                            var start = this.HookData.Substring(0, this.HookData.IndexOf('{') + 1);
+                            var end = this.HookData.Substring(this.HookData.IndexOf('{') + 1);
+
+                            this.HookData =
+                                start + $"std::cout << \"hook -> {this.FuncName}\\n\";" + end;
+                        }
 
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG_S", $"{this.FuncName}{TrampolineExt}");
                         this.HookData = this.HookData.Replace("GDMAKE_ORIG_P", $"{this.FuncName}{TrampolineExt}");
@@ -200,14 +240,20 @@ namespace gdmake {
             ),
             new Macro(
                 "GDMAKE_CREATE_HOOK", new string[] { "addr", "detour", "orig" },
-                "if (MH_CreateHook((PVOID)(gd::base + addr), reinterpret_cast<LPVOID>(detour), reinterpret_cast<LPVOID*>(&orig)) != MH_OK) return false;",
+                "if (MH_CreateHook((PVOID)(gd::base + addr), reinterpret_cast<LPVOID>(detour), reinterpret_cast<LPVOID*>(&orig)) != MH_OK) return \"Unable to hook \"#detour\"!\";",
+                "Alias macro for creating a hook at an address.",
+                null
+            ),
+            new Macro(
+                "GDMAKE_CREATE_HOOK_A", new string[] { "addr", "detour", "orig" },
+                "if (MH_CreateHook((PVOID)(addr), reinterpret_cast<LPVOID>(detour), reinterpret_cast<LPVOID*>(&orig)) != MH_OK) return \"Unable to hook \"#detour\"!\";",
                 "Alias macro for creating a hook at an address.",
                 null
             ),
             new Macro(
                 "GDMAKE_HOOK", new string[] { "addr" }, "",
                 "Turns the function following this macro into a hook in the address. Use GDMAKE_ORIG to call the original function.",
-                s => new Hook(s), Macro.EReplaceType.NextFunction
+                (s, pre) => new Hook(s, pre), Macro.EReplaceType.NextFunction
             ),
             new Macro(
                 "GDMAKE_ORIG", new string[] { "..." }, "1",
@@ -243,7 +289,12 @@ namespace gdmake {
             new Macro(
                 "GDMAKE_DEBUG", new string[] { "command", "argvar" }, "void GDMAKE_INT_CONCAT2(dbg_, command)(std::vector<std::string> argvar)",
                 "Add a custom debug input to the console",
-                s => new DebugMsg(s), Macro.EReplaceType.NoReplace
+                (s, pre) => new DebugMsg(s), Macro.EReplaceType.NoReplace
+            ),
+            new Macro(
+                "GDMAKE_ATTR", new string[] { "..." }, "",
+                "Add custom GDMake attributes",
+                null
             ),
         };
 
@@ -335,7 +386,7 @@ namespace gdmake {
                     if (macro.Replace != null) {
                         int ReplaceForSubstring(int sx, int ex) {
                             macroCount++;
-                            var res = macro.Replace(oText.Substring(sx, ex));
+                            var res = macro.Replace(oText.Substring(sx, ex), this);
 
                             if (res is Hook) {
                                 if ((res as Hook).Address == 0) {
@@ -448,20 +499,16 @@ namespace gdmake {
                 Console.WriteLine($"Processed {macroCount} macros in {Path.GetFileName(file)}");
         }
 
-        public static Preprocessor PreprocessAllFilesInFolder(string path, string resPath, bool replaceAlways = false, bool verbose = false) {
-            var pre = new Preprocessor();
-
-            pre.BasePath = path;
-            pre.ResultPath = resPath;
-            pre.Verbose = verbose;
-            pre.ReplaceAllFiles = replaceAlways;
+        public void PreprocessAllFilesInFolder(string path, string resPath, bool replaceAlways = false, bool verbose = false) {
+            this.BasePath = path;
+            this.ResultPath = resPath;
+            this.Verbose = verbose;
+            this.ReplaceAllFiles = replaceAlways;
 
             foreach (var file in Directory
                 .EnumerateFiles(path, "*.*", SearchOption.AllDirectories)
                 .Where(f => (new string[] { ".cpp", ".c", ".h", ".hpp" }).Any(s => f.EndsWith(s))))
-                    pre.GetMacrosAndReplace(file, file.Replace(path, resPath));
-
-            return pre;
+                    this.GetMacrosAndReplace(file, file.Replace(path, resPath));
         }
     }
 }

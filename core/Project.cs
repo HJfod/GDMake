@@ -152,8 +152,23 @@ namespace gdmake {
 
             var hookCode = "";
 
+            HashSet<string> modules = new HashSet<string>();
+
             foreach (var hook in pre.Hooks)
-                hookCode += $"    GDMAKE_CREATE_HOOK({hook.Address}, {hook.FuncName}, {hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
+                if (hook.Address == -1) {
+                    var baseName = $"{hook.Module.Replace('.', '_')}_base";
+                    if (!modules.Contains(hook.Module)) {
+                        hookCode += $"    auto {baseName} = GetModuleHandleA(\"{hook.Module}\");\n";
+                        modules.Add(hook.Module);
+                    }
+                    var addrStr = $"reinterpret_cast<LPVOID>(GetProcAddress({baseName}, \"{hook.Symbol}\"))";
+                    hookCode += $"    GDMAKE_CREATE_HOOK_A(" +
+                        $"{addrStr}," + 
+                        $"{hook.FuncName}," + 
+                        $"{hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
+                } else
+                    hookCode +=
+                        $"    GDMAKE_CREATE_HOOK({hook.Address}, {hook.FuncName}, {hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
             
             str = str.Replace("<<GDMAKE_HOOKS>>", hookCode);
 
@@ -316,7 +331,10 @@ namespace gdmake {
             CopyAllSourceFiles(Path.Join(dir, "src"));
             DeleteSourceFilesNotInDestination(Path.Join(dir, "src"));
 
-            var pre = Preprocessor.PreprocessAllFilesInFolder(this.Dir, Path.Join(dir, "src"), fullRegen, verbose);
+            var pre = new Preprocessor();
+            
+            pre.AddLogToHook = Dotfile.DebugLogHookCalls;
+            pre.PreprocessAllFilesInFolder(this.Dir, Path.Join(dir, "src"), fullRegen, verbose);
             
             GenerateAndSaveFile(dir, "dllmain.cpp", GenerateDLLMain());
             GenerateAndSaveFile(dir, "debug.h", GenerateDebugHeader(pre));

@@ -21,10 +21,17 @@ DWORD WINAPI load_thread(LPVOID hModule) {
         <<?CONSOLE>>    return 1;
         <<?CONSOLE>>}
 
-        if (mod::load((HMODULE)hModule)) {
+        auto loadMsg = mod::load((HMODULE)hModule);
+
+        if (!loadMsg.size()) {
             <<?CONSOLE>>gdmake::console::awaitUnload();
         } else {
-            MessageBoxA(nullptr, ""Unable to set up hooks!"", ""<<MOD_NAME>>"", MB_ICONERROR);
+            MessageBoxA(
+                nullptr,
+                (""Error Loading Mod: \"""" + loadMsg + ""\"""").c_str(),
+                ""<<MOD_NAME>>"",
+                MB_ICONERROR
+            );
             <<?CONSOLE>>gdmake::console::unload();
             FreeLibraryAndExitThread((HMODULE)hModule, 0);
             return 0;
@@ -71,7 +78,7 @@ DefaultStrings.HeaderCredit +
 #include <GDMake.h>
 
 namespace mod {
-    bool load(HMODULE);
+    std::string load(HMODULE);
     void unload();
 }
 ";
@@ -85,22 +92,22 @@ DefaultStrings.HeaderCredit +
 #include ""mod.h""
 #include ""hooks.h""
 
-bool mod::load(HMODULE hModule) {
+std::string mod::load(HMODULE hModule) {
     auto init = MH_Initialize();
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) [[unlikely]]
-        return false;
+        return ""Unable to initialize MinHook!"";
 
     if (!loadMod(hModule))
-        return false;
+        return ""Error loading mod settings!"";
 
 <<GDMAKE_HOOKS>>
 
     if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) [[unlikely]] {
         MH_Uninitialize();
-        return false;
+        return ""Unable to enable hooks!"";
     }
     
-    return true;
+    return """";
 }
 
 void mod::unload() {
