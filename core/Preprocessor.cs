@@ -82,7 +82,7 @@ namespace gdmake {
             public string Module { get; internal set; }
             public string FuncName { get; internal set; }
             public string ReturnType { get; internal set; }
-            public string CallingConvention { get; internal set; }
+            public string CallingConvention { get; internal set; } = null;
             public string Args { get; internal set; }
             public string RawSignature { get; internal set; }
             public HashSet<string> IncludesAndUsings { get; internal set; } = new HashSet<string>();
@@ -92,6 +92,13 @@ namespace gdmake {
             }
 
             public string GetFunctionSignature() {
+                if (this.RawSignature.Contains("edx_t,")) {
+                    var sig = this.RawSignature;
+                    sig.Replace("__fastcall", "__thiscall");
+                    sig.Replace("edx_t,", "");
+                    return sig;
+                }
+
                 return this.RawSignature;
             }
 
@@ -151,7 +158,8 @@ namespace gdmake {
                             "stdcall",
                             "cdecl",
                             "vectorcall",
-                            "clrcall"
+                            "clrcall",
+                            "gdmakecall"
                         };
 
                         for (var i = 0; i < types.Length - 1; i++)
@@ -161,12 +169,14 @@ namespace gdmake {
                                 this.ReturnType += types[i] + ' ';
 
                         var attrs = new List<string>();  
-                        if (funcType.Contains("GDMAKE_ATTR")) {
-                            var attrStr = funcType.Substring(
-                                funcType.IndexOf("GDMAKE_ATTR")
+                        if (funcDef.Contains("GDMAKE_ATTR")) {
+                            var attrStr = funcDef.Substring(
+                                funcDef.IndexOf("GDMAKE_ATTR")
                             );
 
+                            funcDef = funcDef.Substring(0, funcDef.IndexOf("GDMAKE_ATTR"));
                             attrStr = attrStr.Substring(attrStr.IndexOf("(") + 1);
+                            funcDef += attrStr.Substring(attrStr.IndexOf(")") + 1);
                             attrStr = attrStr.Substring(0, attrStr.IndexOf(")"));
 
                             attrs = attrStr.Split(",").ToList();

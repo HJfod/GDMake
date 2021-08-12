@@ -298,14 +298,22 @@ namespace gdmake {
             }
         }
 
-        private void GenerateAndSaveFile(string dir, string filename, string data) {
+        private bool GenerateAndSaveFile(
+            string dir,
+            string filename,
+            string data,
+            bool otherWise = false
+        ) {
             string file = Path.Join(dir, filename);
             string oldFile = "";
             if (File.Exists(file))
                 oldFile = File.ReadAllText(file);
 
-            if (Dotfile.EntryPoint == null && oldFile != data)
+            if (Dotfile.EntryPoint == null && (oldFile != data || otherWise)) {
                 File.WriteAllText(file, data);
+                return true;
+            }
+            return false;
         }
 
         public Result Generate(bool empty = false, bool fullRegen = false, bool verbose = false) {
@@ -339,8 +347,8 @@ namespace gdmake {
             GenerateAndSaveFile(dir, "dllmain.cpp", GenerateDLLMain());
             GenerateAndSaveFile(dir, "debug.h", GenerateDebugHeader(pre));
             GenerateAndSaveFile(dir, "console.cpp", GenerateConsoleSource(pre));
-            GenerateAndSaveFile(dir, "hooks.h", GenerateHookHeader(pre));
-            GenerateAndSaveFile(dir, "mod.cpp", GenerateModLoad(pre));
+            var hooks = GenerateAndSaveFile(dir, "hooks.h", GenerateHookHeader(pre));
+            GenerateAndSaveFile(dir, "mod.cpp", GenerateModLoad(pre), hooks);
             GenerateAndSaveFile(dir, "mod.h", DefaultStrings.ModLoadHeader);
             GenerateAndSaveFile(dir, "CMakeLists.txt", GenerateCMakeLists(this.Dotfile.Libs));
 

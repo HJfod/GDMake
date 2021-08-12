@@ -144,7 +144,7 @@ namespace gdmake {
             foreach (var macro in Preprocessor.Macros)
                 includeMacros += $"/**\n * Semantic information for GDMake.\n{macro.GetFormattedDesc()}\n */\n" + 
                     $"#define {macro.Text}" +
-                    $"{(macro.Parameters != null ? "(" + String.Join(",", macro.Parameters) + ")" : "")}" + 
+                    $"{(macro.Parameters != null ? ("(" + String.Join(",", macro.Parameters) + ")") : "")}" + 
                     $" {macro.CppReplace}\n\n";
             
             includeMacros += DefaultStrings.ExtraCCMacros;
