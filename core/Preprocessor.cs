@@ -16,6 +16,7 @@ namespace gdmake {
         private bool Verbose { get; set; }
         private bool ReplaceAllFiles { get; set; }
         public bool AddLogToHook { get; internal set; }
+        public bool ReplacePragmaOnceWithGuards { get; internal set; } = false;
 
         public class Replacement {
             public string MacroName { get; set; }
@@ -348,6 +349,7 @@ namespace gdmake {
                 .Replace("/", "__")
                 .Replace(":", "_")
                 .Replace(' ', '_')
+                .Replace('-', '_')
                 .Replace('.', '_');
 
             var ig = $"__GDMAKE_IG_{fname}__";
@@ -365,7 +367,8 @@ namespace gdmake {
             var macroCount = 0;
 
             bool addIncludeGuard = oText.Contains("#pragma once");
-            oText = oText.Replace("#pragma once", GetIncludeGuard(file));
+            if (ReplacePragmaOnceWithGuards)
+                oText = oText.Replace("#pragma once", GetIncludeGuard(file));
 
             try {
                 foreach (var find in new FindItem[] {
@@ -491,7 +494,7 @@ namespace gdmake {
 
             oText = extraIncludes + oText;
             
-            if (addIncludeGuard)
+            if (ReplacePragmaOnceWithGuards && addIncludeGuard)
                 oText += "\n#endif\n";
 
             if (File.Exists(destFile) && !this.ReplaceAllFiles) {

@@ -342,6 +342,7 @@ namespace gdmake {
             var pre = new Preprocessor();
             
             pre.AddLogToHook = Dotfile.DebugLogHookCalls;
+            pre.ReplacePragmaOnceWithGuards = Dotfile.ReplaceIncludeGuards;
             pre.PreprocessAllFilesInFolder(this.Dir, Path.Join(dir, "src"), fullRegen, verbose);
             
             GenerateAndSaveFile(dir, "dllmain.cpp", GenerateDLLMain());
