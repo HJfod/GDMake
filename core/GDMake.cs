@@ -71,15 +71,16 @@ namespace gdmake {
         }
 
         public static OutputLevel OutputFromString(string level) {
-            switch (level.ToLower()) {
-                case "silent": return OutputLevel.Silent;
-                case "quiet": return OutputLevel.Quiet;
-                case "minimal": return OutputLevel.Minimal;
-                case "normal": return OutputLevel.Normal;
-                case "diagnostic": return OutputLevel.Loud;
-                case "details": return OutputLevel.Loud;
-                case "loud": return OutputLevel.Loud;
-            }
+            if (level != null)
+                switch (level.ToLower()) {
+                    case "silent": return OutputLevel.Silent;
+                    case "quiet": return OutputLevel.Quiet;
+                    case "minimal": return OutputLevel.Minimal;
+                    case "normal": return OutputLevel.Normal;
+                    case "diagnostic": return OutputLevel.Loud;
+                    case "details": return OutputLevel.Loud;
+                    case "loud": return OutputLevel.Loud;
+                }
 
             return OutputLevel.Quiet;
         }
