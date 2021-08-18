@@ -54,6 +54,36 @@ namespace gdmake {
             }
         };
 
+        public enum OutputLevel {
+            Silent, Quiet, Minimal, Normal, Loud
+        }
+
+        public static string OutputToString(OutputLevel level) {
+            switch (level) {
+                case OutputLevel.Silent: return "Silent";
+                case OutputLevel.Quiet: return "Quiet";
+                case OutputLevel.Minimal: return "Minimal";
+                case OutputLevel.Normal: return "Normal";
+                case OutputLevel.Loud: return "Diagnostic";
+            }
+
+            return "Unknown";
+        }
+
+        public static OutputLevel OutputFromString(string level) {
+            switch (level.ToLower()) {
+                case "silent": return OutputLevel.Silent;
+                case "quiet": return OutputLevel.Quiet;
+                case "minimal": return OutputLevel.Minimal;
+                case "normal": return OutputLevel.Normal;
+                case "diagnostic": return OutputLevel.Loud;
+                case "details": return OutputLevel.Loud;
+                case "loud": return OutputLevel.Loud;
+            }
+
+            return OutputLevel.Quiet;
+        }
+
         public const string DotfileName = ".gdmake";
         public static string ExePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location).Replace("\\", "/");
         public static Submodule[] DefaultSubmodules = new Submodule[] {
@@ -174,18 +204,20 @@ namespace gdmake {
             string pName,
             string config,
             string cMakeOpts = null,
-            bool silent = false,
-            string verb = "quiet"
+            OutputLevel level = OutputLevel.Quiet
         ) {
             var process = new Process();
 
             if (String.IsNullOrWhiteSpace(cMakeOpts)) cMakeOpts = null;
 
-            process.StartInfo.Arguments = $"\"{cd}\" {pName} {config} {verb} {(cMakeOpts != null ? $"\"{cMakeOpts}\"" : "")}";
+            process.StartInfo.Arguments = $"\"{cd}\" {pName} {config} {OutputToString(level)} {(cMakeOpts != null ? $"\"{cMakeOpts}\"" : "")}";
             process.StartInfo.FileName = Path.Join(ExePath, "build.bat");
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.RedirectStandardOutput = true;
-            process.OutputDataReceived += (sender, args) => { if (!silent) Console.WriteLine(args.Data); };
+            process.OutputDataReceived += (sender, args) => {
+                if (level != OutputLevel.Silent)
+                    Console.WriteLine(args.Data);
+            };
 
             process.Start();
             process.BeginOutputReadLine();
@@ -302,7 +334,7 @@ namespace gdmake {
             return !Directory.EnumerateFileSystemEntries(path).Any();
         }
 
-        public static void CompileLibs() {
+        public static void CompileLibs(OutputLevel outlvl = OutputLevel.Silent) {
             LoadSettings();
 
             Directory.CreateDirectory(Path.Join(ExePath, "libs"));
@@ -312,7 +344,7 @@ namespace gdmake {
                 if (sub.Type == Submodule.TSubmoduleType.stCompiledLib) {
                     Console.WriteLine($"Building {sub.Name}...");
 
-                    RunBuildBat(Path.Join(ExePath, "submodules", sub.Name), sub.Name, "Release", sub.CMakeDefs, true);
+                    RunBuildBat(Path.Join(ExePath, "submodules", sub.Name), sub.Name, "Release", sub.CMakeDefs, outlvl);
 
                     foreach (var file in Directory.GetFiles(
                         Path.Join(ExePath, "submodules", sub.Name, "build", "Release")
@@ -332,7 +364,7 @@ namespace gdmake {
                     if (Path.GetFileName(dir) != "bin") {
                         var path = Path.Join(ExePath, "tools", Path.GetFileName(dir));
 
-                        RunBuildBat(path, Path.GetFileName(dir), "Release", null, true);
+                        RunBuildBat(path, Path.GetFileName(dir), "Release", null, outlvl);
 
                         var exe = $"{Path.GetFileName(dir)}.exe";
 
@@ -499,7 +531,7 @@ namespace gdmake {
             return new SuccessResult();
         }
 
-        public static Result InitializeGlobal(bool re = false) {
+        public static Result InitializeGlobal(bool re = false, OutputLevel outlvl = OutputLevel.Silent) {
             if (!IsGlobalInitialized(true))
                 re = true;
 
@@ -555,7 +587,7 @@ namespace gdmake {
             GenerateSourceFiles();
             GenerateTools();
 
-            CompileLibs();
+            CompileLibs(outlvl);
 
             return new SuccessResult();
         }

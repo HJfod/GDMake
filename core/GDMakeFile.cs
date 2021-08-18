@@ -27,6 +27,7 @@ namespace gdmake {
         public List<string> Dlls { get; set; } = null;
         public List<string> Resources { get; set; } = new List<string>();
         public bool DebugLogHookCalls { get; set; } = false;
+        public bool SeparateHookFiles { get; set; } = false;
 
         public GDMakeFile() {
             this.ProjectName = null;

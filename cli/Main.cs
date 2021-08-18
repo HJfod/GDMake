@@ -340,7 +340,10 @@ Commands (Use help <command> for extra information):"
                                     return;
                                 }
 
-                                var res = GDMake.InitializeGlobal(ap.HasFlag("re"));
+                                var res = GDMake.InitializeGlobal(
+                                    ap.HasFlag("re"),
+                                    GDMake.OutputFromString(ap.GetFlagValue("outlvl"))
+                                );
 
                                 if (res.Failure)
                                     Console.WriteLine($"Error: {(res as ErrorResult).Message}");

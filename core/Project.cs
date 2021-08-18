@@ -358,7 +358,7 @@ namespace gdmake {
             return new SuccessResult();
         }
 
-        public Result Build(string verbosity = "silent", string config = "RelWithDebInfo") {
+        public Result Build(string verb = "silent", string config = "RelWithDebInfo") {
             if (builddir == null)
                 return new ErrorResult("Build directory not set (Make sure to generate first!)");
 
@@ -370,9 +370,7 @@ namespace gdmake {
                 foreach (var file in Directory.GetFiles(Path.Join(builddir, "build", config), "*.dll"))
                     try { File.Delete(file); } catch (Exception) {}
 
-            var verb = verbosity;
-            if (verb == "silent") verb = "quiet";
-            GDMake.RunBuildBat(Path.Join(builddir).Replace("\\", "/"), this.Name, config, null, verbosity == "silent", verb);
+            GDMake.RunBuildBat(Path.Join(builddir).Replace("\\", "/"), this.Name, config, null, GDMake.OutputFromString(verb));
 
             var resDir = Path.Join(builddir, "res");
 
