@@ -235,12 +235,12 @@ namespace gdmake {
 
         public static readonly Macro[] Macros = new Macro[] {
             new Macro(
-                "GDMAKE_MAIN", null, "bool mod::loadMod(HMODULE)",
+                "GDMAKE_MAIN", null, "std::string mod::loadMod(HMODULE)",
                 "Main entry point for the mod. All default variables should be initialized at this point. Only called if EntryPoint is null.",
                 null
             ),
             new Macro(
-                "GDMAKE_MAIN_HM", new string[] { "hModule" }, "bool mod::loadMod(HMODULE hModule)",
+                "GDMAKE_MAIN_HM", new string[] { "hModule" }, "std::string mod::loadMod(HMODULE hModule)",
                 "Main entry point for the mod. All default variables should be initialized at this point. Only called if EntryPoint is null.",
                 null
             ),

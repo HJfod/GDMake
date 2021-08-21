@@ -65,7 +65,7 @@ BOOL APIENTRY DllMain(
         public const string GDMakeModNS =
 @"
 namespace mod {
-    bool loadMod(HMODULE);
+    std::string loadMod(HMODULE);
     void unloadMod();
 }
 ";
@@ -97,8 +97,9 @@ std::string mod::load(HMODULE hModule) {
     if (init != MH_OK && init != MH_ERROR_ALREADY_INITIALIZED) [[unlikely]]
         return ""Unable to initialize MinHook!"";
 
-    if (!loadMod(hModule))
-        return ""Error loading mod settings!"";
+    auto str = loadMod(hModule);
+    if (str.size())
+        return ""Error loading mod settings: "" + str;
 
 <<GDMAKE_HOOKS>>
 
