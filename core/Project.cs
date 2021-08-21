@@ -180,6 +180,11 @@ namespace gdmake {
        
             str = str.Replace("<<GDMAKE_DIR>>", GDMake.ExePath.Replace("\\", "/"));
             str = str.Replace("<<MOD_NAME>>", this.Name);
+            str = str.Replace("<<DLL_FILE_NAME>>",
+                this.Dotfile.IncludeVersionInName ?
+                    this.Name + "-" + this.Dotfile.Version :
+                    this.Name
+            );
             
             var libstr = "";
             foreach (var lib in libs)

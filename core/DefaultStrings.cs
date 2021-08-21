@@ -219,6 +219,7 @@ set(WIN32 ON)
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX """")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ""<<DLL_FILE_NAME>>"")
 
 target_include_directories(
     ${PROJECT_NAME} PRIVATE

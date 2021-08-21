@@ -29,6 +29,7 @@ namespace gdmake {
         public bool DebugLogHookCalls { get; set; } = false;
         public bool SeparateHookFiles { get; set; } = false;
         public bool ReplaceIncludeGuards { get; set; } = false;
+        public bool IncludeVersionInName { get; set; } = true;
 
         public GDMakeFile() {
             this.ProjectName = null;
