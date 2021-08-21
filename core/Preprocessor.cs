@@ -317,7 +317,7 @@ namespace gdmake {
                 null
             ),
             new Macro(
-                "GDMAKE_PROJECT_VERSION", null, "",
+                "GDMAKE_PROJECT_VERSION", null, "\"\"",
                 "The version of the project; works inside string aswell",
                 (s, pre) => new TextReplace(() => pre.Project.Dotfile.Version),
                 Macro.EReplaceType.Text
