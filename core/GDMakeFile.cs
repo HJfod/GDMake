@@ -13,6 +13,7 @@ namespace gdmake {
         }
 
         public string ProjectName { get; set; }
+        public string GithubRepo { get; set; } = null;
         public string EntryPoint { get; set; } = null;
         public string Version { get; set; } = "v1.0";
         public bool ConsoleEnabled { get; set; } = false;

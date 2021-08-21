@@ -83,6 +83,13 @@ namespace gdmake {
             return new SuccessResult();
         }
     
+        private string GetFileName(bool suffix = false) {
+            return 
+                this.Dotfile.IncludeVersionInName ?
+                    (this.Name + "-" + this.Dotfile.Version + (suffix ? ".dll" : "")) :
+                    this.Name + (suffix ? ".dll" : "");
+        }
+
         private string GenerateDLLMain() {
             var str = DefaultStrings.DllMain;
        
@@ -180,11 +187,7 @@ namespace gdmake {
        
             str = str.Replace("<<GDMAKE_DIR>>", GDMake.ExePath.Replace("\\", "/"));
             str = str.Replace("<<MOD_NAME>>", this.Name);
-            str = str.Replace("<<DLL_FILE_NAME>>",
-                this.Dotfile.IncludeVersionInName ?
-                    this.Name + "-" + this.Dotfile.Version :
-                    this.Name
-            );
+            str = str.Replace("<<DLL_FILE_NAME>>", this.GetFileName());
             
             var libstr = "";
             foreach (var lib in libs)
@@ -348,6 +351,7 @@ namespace gdmake {
             
             pre.AddLogToHook = Dotfile.DebugLogHookCalls;
             pre.ReplacePragmaOnceWithGuards = Dotfile.ReplaceIncludeGuards;
+            pre.Project = this;
             pre.PreprocessAllFilesInFolder(this.Dir, Path.Join(dir, "src"), fullRegen, verbose);
             
             GenerateAndSaveFile(dir, "dllmain.cpp", GenerateDLLMain());
@@ -436,7 +440,7 @@ namespace gdmake {
                         File.Copy(resc, target);
                 } catch (Exception) { Console.WriteLine($"Error copying {resc}"); }
 
-            res = GDMake.InjectDLL(Path.Join((res as SuccessResult<string>).Data, "res", $"{this.Name}.dll"));
+            res = GDMake.InjectDLL(Path.Join((res as SuccessResult<string>).Data, "res", this.GetFileName(true)));
 
             if (res.Failure)
                 return res;

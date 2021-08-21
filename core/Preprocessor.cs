@@ -17,6 +17,7 @@ namespace gdmake {
         private bool ReplaceAllFiles { get; set; }
         public bool AddLogToHook { get; internal set; }
         public bool ReplacePragmaOnceWithGuards { get; internal set; } = false;
+        public Project Project;
 
         public class Replacement {
             public string MacroName { get; set; }
@@ -34,7 +35,7 @@ namespace gdmake {
             public bool IsReplace { get; internal set; }
             public string Description { get; internal set; }
             public Func<string, Preprocessor, MacroFuncRes> Replace { get; internal set; }
-            public enum EReplaceType { Inside, NextFunction, NoReplace }
+            public enum EReplaceType { Inside, NextFunction, NoReplace, Text }
             public EReplaceType ReplaceType;
 
             public string GetFormattedDesc() {
@@ -233,6 +234,14 @@ namespace gdmake {
             }
         }
 
+        public class TextReplace : MacroFuncRes {
+            public string Result { get; internal set; }
+
+            public TextReplace(Func<string> f) {
+                this.Result = f();
+            }
+        }
+
         public static readonly Macro[] Macros = new Macro[] {
             new Macro(
                 "GDMAKE_MAIN", null, "std::string mod::loadMod(HMODULE)",
@@ -306,6 +315,12 @@ namespace gdmake {
                 "GDMAKE_ATTR", new string[] { "..." }, "",
                 "Add custom GDMake attributes",
                 null
+            ),
+            new Macro(
+                "GDMAKE_PROJECT_VERSION", null, "",
+                "The version of the project; works inside string aswell",
+                (s, pre) => new TextReplace(() => pre.Project.Dotfile.Version),
+                Macro.EReplaceType.Text
             ),
         };
 
@@ -484,6 +499,13 @@ namespace gdmake {
                                         else break;
 
                                     ReplaceForSubstring(startIndex, endIndex - startIndex + 1);
+                                } break;
+                            
+                                case Macro.EReplaceType.Text: {
+                                    oText = oText.Replace(
+                                        macro.Text,
+                                        (macro.Replace("", this) as TextReplace).Result
+                                    );
                                 } break;
                             }
                         }
