@@ -349,6 +349,9 @@ namespace gdmake {
 
                 if (offset - s_offset <= 0)
                     continue;
+                
+                if (s_offset + offset - s_offset > line.Length)
+                    continue;
 
                 if (line.Substring(s_offset, offset - s_offset).Contains(sub))
                     return foffset - line.Length - 1 + line.Substring(s_offset, offset - s_offset).IndexOf(sub);
