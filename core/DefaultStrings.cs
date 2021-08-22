@@ -382,10 +382,11 @@ GDMAKE_MAIN {
     // they are automatically enabled after
     // this method.
 
-    // return true if load was succesful,
-    // false if an error occurred.
+    // return an empty string if load was
+    // succesful, and a string describing 
+    // the error if one occurred.
 
-    return true;
+    return """";
 }
 
 GDMAKE_UNLOAD {
