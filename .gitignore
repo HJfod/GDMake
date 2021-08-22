@@ -1,7 +1,3 @@
-# note from ConfiG: this line is from the original .gitignore
-# and i have absolutely 0 idea why is this here but gonna leave it anyway in case it's something important
-epic/
-
 ### VisualStudioCode template
 .vscode/*
 !.vscode/settings.json
