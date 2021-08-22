@@ -318,8 +318,14 @@ namespace gdmake {
             ),
             new Macro(
                 "GDMAKE_PROJECT_VERSION", null, "\"\"",
-                "The version of the project; works inside string aswell",
+                "The version of the project; use inside a string",
                 (s, pre) => new TextReplace(() => pre.Project.Dotfile.Version),
+                Macro.EReplaceType.Text
+            ),
+            new Macro(
+                "GDMAKE_IS_CONSOLE_ENABLED", null, "false",
+                "If the console is enabled; useful for debugging",
+                (s, pre) => new TextReplace(() => pre.Project.Dotfile.ConsoleEnabled ? "true" : "false"),
                 Macro.EReplaceType.Text
             ),
         };
