@@ -342,7 +342,8 @@ Commands (Use help <command> for extra information):"
 
                                 var res = GDMake.InitializeGlobal(
                                     ap.HasFlag("re"),
-                                    GDMake.OutputFromString(ap.GetFlagValue("outlvl"))
+                                    GDMake.OutputFromString(ap.GetFlagValue("outlvl")),
+                                    ap.GetFlagValue("vs")
                                 );
 
                                 if (res.Failure)

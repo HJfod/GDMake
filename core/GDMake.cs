@@ -532,7 +532,11 @@ namespace gdmake {
             return new SuccessResult();
         }
 
-        public static Result InitializeGlobal(bool re = false, OutputLevel outlvl = OutputLevel.Silent) {
+        public static Result InitializeGlobal(
+            bool re = false,
+            OutputLevel outlvl = OutputLevel.Silent,
+            string vs = "Visual Studio 19"
+        ) {
             if (!IsGlobalInitialized(true))
                 re = true;
 
@@ -582,7 +586,10 @@ namespace gdmake {
 
             Console.WriteLine("Generating files...");
 
-            File.WriteAllText(Path.Join(ExePath, "build.bat"), DefaultStrings.BuildBat);
+            var btext = DefaultStrings.BuildBat;
+            if (vs == null) vs = "Visual Studio 19";
+            btext = btext.Replace("<<GDMAKE_VS>>", vs);
+            File.WriteAllText(Path.Join(ExePath, "build.bat"), btext);
 
             GenerateIncludeFiles();
             GenerateSourceFiles();
