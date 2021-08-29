@@ -535,7 +535,7 @@ namespace gdmake {
         public static Result InitializeGlobal(
             bool re = false,
             OutputLevel outlvl = OutputLevel.Silent,
-            string vs = "Visual Studio 19"
+            string vs = "Visual Studio 16 2019"
         ) {
             if (!IsGlobalInitialized(true))
                 re = true;
@@ -587,7 +587,7 @@ namespace gdmake {
             Console.WriteLine("Generating files...");
 
             var btext = DefaultStrings.BuildBat;
-            if (vs == null) vs = "Visual Studio 19";
+            if (vs == null) vs = "Visual Studio 16 2019";
             btext = btext.Replace("<<GDMAKE_VS>>", $"\"{vs}\"");
             File.WriteAllText(Path.Join(ExePath, "build.bat"), btext);
 
