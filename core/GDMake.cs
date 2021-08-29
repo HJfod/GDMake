@@ -588,7 +588,7 @@ namespace gdmake {
 
             var btext = DefaultStrings.BuildBat;
             if (vs == null) vs = "Visual Studio 19";
-            btext = btext.Replace("<<GDMAKE_VS>>", vs);
+            btext = btext.Replace("<<GDMAKE_VS>>", $"\"{vs}\"");
             File.WriteAllText(Path.Join(ExePath, "build.bat"), btext);
 
             GenerateIncludeFiles();
