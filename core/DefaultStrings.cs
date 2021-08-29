@@ -245,7 +245,7 @@ if not exist build\ (
 
 cd build
 
-cmake .. -A Win32 -Thost=x86 %5
+cmake .. -G ""Visual Studio 17"" -A Win32 -Thost=x86 %5
 
 msbuild %2.sln /p:Configuration=%3 /verbosity:%4 /p:PlatformTarget=x86 /m
 ";
