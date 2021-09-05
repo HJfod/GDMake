@@ -59,6 +59,27 @@ bool __fastcall MenuLayer_init(gd::MenuLayer* self) {
     // initialization was succesful
     return true;
 }
+
+GDMAKE_MAIN {
+    // Main entrypoint.
+    // Do mod-specific initialization code here.
+    // All hooks will be enabled automatically
+    // after this function
+
+    // Return an empty string on success, or
+    // a string describing the error if something
+    // went wrong.
+
+    return "";
+}
+
+GDMAKE_UNLOAD {
+    // If you need to do some mod-specific
+    // unloading / cleanup, write it here
+
+    // All hooks will be automatically 
+    // removed after this
+}
 ```
 
 # Installation

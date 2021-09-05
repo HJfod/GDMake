@@ -346,10 +346,14 @@ Commands (Use help <command> for extra information):"
                                     ap.GetFlagValue("vs")
                                 );
 
-                                if (res.Failure)
-                                    Console.WriteLine($"Error: {(res as ErrorResult).Message}");
-                                else
-                                    Console.WriteLine("Succesfully initialized GDMake!");
+                                if (res == null)
+                                    Console.WriteLine("Result was null, somehow");
+                                else {
+                                    if (res.Failure)
+                                        Console.WriteLine($"Error: {(res as ErrorResult).Message}");
+                                    else
+                                        Console.WriteLine("Succesfully initialized GDMake!");
+                                }
                             }
                         })},
                     
