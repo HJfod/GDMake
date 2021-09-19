@@ -414,7 +414,9 @@ namespace gdmake {
         static T getChild(cocos2d::CCNode* x, int i) {
             if (i < 0)
                 i = x->getChildrenCount() + i;
-            return static_cast<T>(x->getChildren()->objectAtIndex(i));
+            if (static_cast<int>(x->getChildrenCount()) <= i)
+                return nullptr;
+            return reinterpret_cast<T>(x->getChildren()->objectAtIndex(i));
         }
 
         template <typename T, typename R>
