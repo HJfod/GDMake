@@ -111,6 +111,9 @@ namespace gdmake {
                 var addr = data.Substring(0, data.IndexOf(')'));
                 int addri = 0;
 
+                if (addr.Contains(','))
+                    addr = addr.Substring(0, addr.IndexOf(','));
+
                 if (addr.Contains('"')) {
                     addr = addr.Substring(1, addr.Length - 2);
 
