@@ -271,7 +271,7 @@ namespace gdmake {
                 null
             ),
             new Macro(
-                "GDMAKE_HOOK", new string[] { "addr" }, "",
+                "GDMAKE_HOOK", new string[] { "addr", "..." }, "",
                 "Turns the function following this macro into a hook in the address. Use GDMAKE_ORIG to call the original function.",
                 (s, pre) => new Hook(s, pre), Macro.EReplaceType.NextFunction
             ),
