@@ -173,9 +173,26 @@ namespace gdmake {
                         $"{addrStr}," + 
                         $"{hook.FuncName}," + 
                         $"{hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
-                } else
-                    hookCode +=
-                        $"    GDMAKE_CREATE_HOOK({hook.Address}, {hook.FuncName}, {hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
+                } else {
+                    if (hook.Module != null) {
+                        var baseName = $"{hook.Module.Replace('.', '_')}_base";
+                        if (!modules.Contains(hook.Module)) {
+                            hookCode += $"    auto {baseName} = GetModuleHandleA(\"{hook.Module}\");\n";
+                            modules.Add(hook.Module);
+                        }
+                        hookCode +=
+                            $"    GDMAKE_CREATE_HOOK_A(" +
+                            $"reinterpret_cast<uintptr_t>({baseName}) + {hook.Address}, " +
+                            $"{hook.FuncName}, " +
+                            $"{hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
+                    } else {
+                        hookCode +=
+                            $"    GDMAKE_CREATE_HOOK(" +
+                            $"{hook.Address}, " +
+                            $"{hook.FuncName}, " + 
+                            $"{hook.FuncName}{Preprocessor.Hook.TrampolineExt});\n";
+                    }
+                }
             
             str = str.Replace("<<GDMAKE_HOOKS>>", hookCode);
 
@@ -195,6 +212,9 @@ namespace gdmake {
                     libstr += lib + "\n";
                 else
                     libstr += $"{GDMake.ExePath.Replace("\\", "/")}/{lib}\n";
+                    
+            foreach (var lib in GDMake.LibPaths)
+                libstr += $"{lib.Replace("\\", "/").Replace(" ", "\\ ")}\n";
 
             str = str.Replace("<<GDMAKE_LIBS>>", libstr);
 

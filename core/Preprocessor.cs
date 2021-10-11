@@ -81,7 +81,7 @@ namespace gdmake {
             public string HookData { get; internal set; }
             public int Address { get; internal set; }
             public string Symbol { get; internal set; }
-            public string Module { get; internal set; }
+            public string Module { get; internal set; } = null;
             public string FuncName { get; internal set; }
             public string ReturnType { get; internal set; }
             public string CallingConvention { get; internal set; } = null;
@@ -115,17 +115,31 @@ namespace gdmake {
                     addr = addr.Substring(0, addr.IndexOf(','));
 
                 if (addr.Contains('"')) {
-                    addr = addr.Substring(1, addr.Length - 2);
+                    if (addr.Contains('+')) {
+                        var addAddr = addr.Substring(addr.IndexOf('+') + 1).Trim();
+                        addr = addr.Substring(0, addr.IndexOf('+')).Trim();
+                        addr = addr.Substring(1, addr.Length - 2);
 
-                    if (!addr.Contains("::")) {
-                        Console.WriteLine($"Unable to create hook: {addr} - missing module name");
-                        this.HookData = rawData;
+                        if (Int32.TryParse(addAddr.Substring(2), NumberStyles.HexNumber, null, out addri)) {
+                            this.Address = addri;
+                            this.Module = addr;
+                        } else {
+                            Console.WriteLine($"Unable to create hook: {addAddr} is not a valid additive address");
+                            this.HookData = rawData;
+                        }
                     } else {
-                        this.Module = addr.Substring(0, addr.IndexOf("::"));
-                        this.Symbol = addr.Substring(addr.IndexOf("::") + 2);
+                        addr = addr.Substring(1, addr.Length - 2);
 
-                        addri = -1;
-                        this.Address = -1;
+                        if (!addr.Contains("::")) {
+                            Console.WriteLine($"Unable to create hook: {addr} - missing module name");
+                            this.HookData = rawData;
+                        } else {
+                            this.Module = addr.Substring(0, addr.IndexOf("::"));
+                            this.Symbol = addr.Substring(addr.IndexOf("::") + 2);
+
+                            addri = -1;
+                            this.Address = -1;
+                        }
                     }
                 } else {
                     if (!Int32.TryParse(addr.Substring(2), NumberStyles.HexNumber, null, out addri))

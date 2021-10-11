@@ -123,6 +123,32 @@ namespace gdmake {
         };
         public static HashSet<Submodule> Submodules = new HashSet<Submodule>();
         public static SettingsFile SettingsFile = null;
+        public static HashSet<string> IncludePaths = new HashSet<string>();
+        public static HashSet<string> LibPaths = new HashSet<string>();
+
+        public static void AddIncludePath(string path) {
+            IncludePaths.Add(path);
+            SettingsFile.IncludePaths = IncludePaths;
+            GDMake.SaveSettings();
+        }
+
+        public static void RemoveIncludePath(string path) {
+            IncludePaths.Remove(path);
+            SettingsFile.IncludePaths = IncludePaths;
+            GDMake.SaveSettings();
+        }
+
+        public static void AddLibPath(string path) {
+            LibPaths.Add(path);
+            SettingsFile.LibPaths = LibPaths;
+            GDMake.SaveSettings();
+        }
+
+        public static void RemoveLibPath(string path) {
+            LibPaths.Remove(path);
+            SettingsFile.LibPaths = LibPaths;
+            GDMake.SaveSettings();
+        }
 
         public static bool IsGlobalInitialized(bool dontLoadSettings = false) {
             if (!Directory.Exists(Path.Join(ExePath, "submodules")))
@@ -384,8 +410,11 @@ namespace gdmake {
                     File.ReadAllText(Path.Join(ExePath, "GDMakeSettings.json"))
                 );
 
-                if (SettingsFile != null)
+                if (SettingsFile != null) {
                     Submodules = SettingsFile.Submodules;
+                    IncludePaths = SettingsFile.IncludePaths;
+                    LibPaths = SettingsFile.LibPaths;
+                }
             }
 
             CheckSubmodules();
@@ -397,9 +426,12 @@ namespace gdmake {
             foreach (var sub in GDMake.Submodules)
                 if (sub.IncludePaths != null)
                     foreach (var inc in sub.IncludePaths)
-                        res.Add(inc);
+                        res.Add(inc.Replace("\\", "/").Replace(" ", "\\ "));
 
-            res.Add(Path.Join(GDMake.ExePath, "include").Replace("\\", "/"));
+            res.Add(Path.Join(GDMake.ExePath, "include").Replace("\\", "/").Replace(" ", "\\ "));
+
+            foreach (var path in GDMake.IncludePaths)
+                res.Add(path.Replace("\\", "/").Replace(" ", "\\ "));
             
             return res;
         }

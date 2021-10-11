@@ -309,6 +309,48 @@ Commands (Use help <command> for extra information):"
                             }
                         })},
                     
+                        { "list-inc", new ArgHandler (null, args => {
+                            foreach (var inc in GDMake.IncludePaths)
+                                Console.WriteLine(inc);
+                        })},
+                    
+                        { "rm-inc", new ArgHandler (null, args => {
+                            if (args.Count == 0)
+                                Console.WriteLine("Usage: add-inc <path>");
+                            else {
+                                GDMake.RemoveIncludePath(args[0]);
+                            }
+                        })},
+                    
+                        { "add-inc", new ArgHandler (null, args => {
+                            if (args.Count == 0)
+                                Console.WriteLine("Usage: add-inc <path>");
+                            else {
+                                GDMake.AddIncludePath(args[0]);
+                            }
+                        })},
+
+                        { "list-lib", new ArgHandler (null, args => {
+                            foreach (var inc in GDMake.LibPaths)
+                                Console.WriteLine(inc);
+                        })},
+                    
+                        { "rm-lib", new ArgHandler (null, args => {
+                            if (args.Count == 0)
+                                Console.WriteLine("Usage: rm-lib <path>");
+                            else {
+                                GDMake.RemoveLibPath(args[0]);
+                            }
+                        })},
+                    
+                        { "add-lib", new ArgHandler (null, args => {
+                            if (args.Count == 0)
+                                Console.WriteLine("Usage: add-lib <path>");
+                            else {
+                                GDMake.AddLibPath(args[0]);
+                            }
+                        })},
+                    
                         { "setup", new ArgHandler (null, args => {
                             if (args.Count > 0)
                                 Console.WriteLine("Setup does not take any arguments!");
@@ -374,6 +416,16 @@ Commands (Use help <command> for extra information):"
                                 }
                             })},
 
+                            { "build", new ArgHandler(null, args => {
+                                if (!GDMake.IsGlobalInitialized()) {
+                                    GDMake.ShowGlobalNotInitializedError();
+                                    return;
+                                }
+
+                                GDMake.CompileLibs(GDMake.OutputFromString(ap.GetFlagValue("outlvl") ?? "silent"));
+                            })},
+                            
+
                             { "update", new ArgHandler(null, args => {
                                 if (!GDMake.IsGlobalInitialized()) {
                                     GDMake.ShowGlobalNotInitializedError();
@@ -421,7 +473,7 @@ Commands (Use help <command> for extra information):"
                                     GDMake.AddSubmodule(sub);
 
                                     if (stype == GDMake.Submodule.TSubmoduleType.stCompiledLib)
-                                        GDMake.CompileLibs();
+                                        GDMake.CompileLibs(GDMake.OutputFromString(ap.GetFlagValue("outlvl") ?? "silent"));
                                     
                                     Console.WriteLine("Added submodule!");
                                 }
