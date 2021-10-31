@@ -1,3 +1,7 @@
+# ARCHIVED
+
+### This repository has been archived, as GDMake has been superceded by [BetterGD](https://github.com/HJfod/BetterGD) in my own buildchain, and I highly would not recommend anyone else to use this any longer.
+
 # GDMake
 
 ### A tool for creating GD mods
